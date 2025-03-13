@@ -31,6 +31,7 @@ import {
   Fade,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import PageTitle from "@/components/ui/PageTitle";
 
 interface DashboardStats {
   totalMatches: number;
@@ -106,9 +107,11 @@ export default function AdminDashboard() {
         }}
       >
         <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-            Xin chào, {stats?.totalUsers ? "Admin" : "Admin"}
-          </Typography>
+          <PageTitle 
+            title={`Xin chào, ${stats?.totalUsers ? "Admin" : "Admin"}`}
+            gutterBottom
+            withUnderline={false}
+          />
           <Typography variant="body1" color="text.secondary">
             Chào mừng trở lại với hệ thống quản lý phân tích bóng đá
           </Typography>

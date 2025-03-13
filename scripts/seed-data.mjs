@@ -1,8 +1,12 @@
 import { MongoClient } from "mongodb";
 import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
+
+// Tải biến môi trường
+dotenv.config();
 
 // Thông tin kết nối MongoDB
-const uri = "mongodb://127.0.0.1:27017/football-analysis";
+const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/football-analysis";
 
 // Dữ liệu mẫu cho leagues
 const leaguesSeedData = [

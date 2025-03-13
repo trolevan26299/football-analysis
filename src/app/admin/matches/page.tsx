@@ -49,6 +49,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import StatusChip from "@/components/ui/StatusChip";
+import PageTitle from "@/components/ui/PageTitle";
 
 interface Match {
   _id: string;
@@ -307,27 +308,7 @@ export default function MatchesPage() {
           alignItems: "center",
         }}
       >
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            fontWeight: 700,
-            position: "relative",
-            display: "inline-block",
-            "&:after": {
-              content: '""',
-              position: "absolute",
-              bottom: -8,
-              left: 0,
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              bgcolor: "primary.main",
-            },
-          }}
-        >
-          Quản lý trận đấu
-        </Typography>
+        <PageTitle title="Quản lý trận đấu" />
         <Button
           startIcon={<AddIcon />}
           variant="contained"

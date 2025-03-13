@@ -1,12 +1,29 @@
 /* Định nghĩa biến CSS toàn cục */
 :root {
-  --background-light: #f8fafc;
-  --text-light: #334155;
-  --background-dark: #0f172a;
-  --text-dark: #e2e8f0;
-  --border-light: rgba(0, 0, 0, 0.08);
-  --border-dark: rgba(255, 255, 255, 0.08);
-  --transition-standard: all 0.3s ease;
+  /* Cải thiện màu sắc */
+  --light-bg: #f8fafc;
+  --light-bg-paper: #ffffff;
+  --light-text-primary: #334155;
+  --light-text-secondary: #64748b;
+  
+  --dark-bg: #0a1122;
+  --dark-bg-paper: #111827;
+  --dark-text-primary: #e2e8f0;
+  --dark-text-secondary: #94a3b8;
+  
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  /* Box shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  --shadow-dark-sm: 0 2px 5px rgba(0, 0, 0, 0.3);
+  --shadow-dark-md: 0 6px 12px rgba(0, 0, 0, 0.4);
+  --shadow-dark-lg: 0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
 /* Theme sáng */
@@ -56,4 +73,120 @@ body {
     radial-gradient(at 30% 20%, rgba(30, 58, 138, 0.4) 0, transparent 50%);
   pointer-events: none;
   z-index: -1;
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
+
+/* Scrollbars for Webkit (Chrome, Safari, etc.) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.5);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.7);
+}
+
+/* Dark mode scrollbars */
+.dark-theme * {
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+
+.dark-theme ::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.3);
+}
+
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.5);
+}
+
+/* Text selection */
+::selection {
+  background: rgba(25, 118, 210, 0.2);
+  color: inherit;
+}
+
+.dark-theme ::selection {
+  background: rgba(144, 202, 249, 0.3);
+  color: inherit;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+
+/* Improve table appearance */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dark-theme .MuiTableCell-root {
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Glassmorphism support */
+.glass {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.light-theme .glass {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.dark-theme .glass {
+  background-color: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+}
+
+.light-theme .card-hover:hover {
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dark-theme .card-hover:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 255, 255, 0.04);
+}
+
+/* Improve focus outlines for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--mui-palette-primary-main);
+  outline-offset: 2px;
+}
+
+/* Better typography for body */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

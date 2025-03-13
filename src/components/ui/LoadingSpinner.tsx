@@ -21,7 +21,7 @@ interface LoadingSpinnerProps {
   message?: string;
 
   // Kiểu hiển thị
-  variant?: "circular" | "linear" | "overlay" | "skeleton";
+  variant?: "circular" | "linear" | "overlay" | "skeleton" | "default";
 
   // Kích thước và màu sắc
   size?: "small" | "medium" | "large";
@@ -37,6 +37,9 @@ interface LoadingSpinnerProps {
   // Custom styles
   className?: string;
   style?: React.CSSProperties;
+
+  // Props for dark mode
+  overlayColor?: string;
 }
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
@@ -50,8 +53,14 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   width,
   className,
   style,
+  overlayColor
 }) => {
   const theme = useTheme();
+
+  // Nếu không có overlayColor được truyền vào, sử dụng màu nền mặc định dựa trên theme
+  const bgColor = overlayColor || (theme.palette.mode === 'dark' 
+    ? 'rgba(0, 0, 0, 0.8)' 
+    : 'rgba(255, 255, 255, 0.8)');
 
   // Xác định kích thước dựa trên prop size
   const getSize = () => {
@@ -115,10 +124,17 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   const OverlayLoading = () => (
     <Backdrop
       sx={{
-        color: "#fff",
-        zIndex: theme.zIndex.drawer + 1,
-        backgroundColor: blur ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.5)",
-        backdropFilter: blur ? "blur(3px)" : "none",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: bgColor,
+        backdropFilter: 'blur(5px)',
+        zIndex: 9999,
       }}
       open={loading}
     >
@@ -129,7 +145,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           flexDirection: "column",
           alignItems: "center",
           padding: 3,
-          backgroundColor: blur ? "rgba(255, 255, 255, 0.9)" : "transparent",
+          backgroundColor: "transparent",
           minWidth: 200,
         }}
       >

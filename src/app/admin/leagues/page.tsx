@@ -1,40 +1,41 @@
 "use client";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import ErrorAlert from "@/components/ui/ErrorAlert";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import StatusChip from "@/components/ui/StatusChip";
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-} from "@mui/icons-material";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  IconButton,
-  MenuItem,
   Paper,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
+  MenuItem,
+  TablePagination,
+  Switch,
+  FormControlLabel,
   Tooltip,
-  Typography,
+  useTheme,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import SearchIcon from "@mui/icons-material/Search";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import PageTitle from "@/components/ui/PageTitle";
+import StatusChip from "@/components/ui/StatusChip";
+import {
+  Refresh as RefreshIcon,
+} from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
-import { useEffect, useState } from "react";
 
 interface League {
   _id: string;
@@ -61,6 +62,7 @@ const initialFormData: LeagueFormData = {
 };
 
 export default function LeaguesPage() {
+  const theme = useTheme();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -223,7 +225,11 @@ export default function LeaguesPage() {
   };
 
   if (loading) {
-    return <LoadingSpinner variant="overlay" message="Đang tải dữ liệu..." />;
+    return <LoadingSpinner 
+      variant="overlay" 
+      message="Đang tải dữ liệu..." 
+      overlayColor={theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)'}
+    />;
   }
 
   return (
@@ -240,27 +246,10 @@ export default function LeaguesPage() {
           alignItems: "center",
         }}
       >
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            fontWeight: 700,
-            position: "relative",
-            display: "inline-block",
-            "&:after": {
-              content: '""',
-              position: "absolute",
-              bottom: -8,
-              left: 0,
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              bgcolor: "primary.main",
-            },
-          }}
-        >
-          Quản lý giải đấu
-        </Typography>
+        <PageTitle 
+          title="Quản lý giải đấu" 
+          sx={{ color: theme.palette.mode === 'dark' ? '#ffffff' : undefined }}
+        />
         <Button
           startIcon={<AddIcon />}
           variant="contained"
@@ -285,6 +274,8 @@ export default function LeaguesPage() {
             theme.palette.mode === "light"
               ? "0 2px 6px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)"
               : "0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
+          bgcolor: (theme) => 
+            theme.palette.mode === "dark" ? 'rgba(18, 18, 18, 0.9)' : 'background.paper',
         }}
       >
         <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
@@ -344,17 +335,47 @@ export default function LeaguesPage() {
             theme.palette.mode === "light"
               ? "0 2px 6px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)"
               : "0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
+          bgcolor: (theme) => 
+            theme.palette.mode === "dark" ? 'rgba(18, 18, 18, 0.9)' : 'background.paper',
         }}
       >
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Tên giải</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Quốc gia</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Mùa giải</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Ngày tạo</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 600 }}>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
+                Tên giải
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
+                Quốc gia
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
+                Mùa giải
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
+                Trạng thái
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
+                Ngày tạo
+              </TableCell>
+              <TableCell align="right" sx={{ 
+                fontWeight: 600,
+                color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+              }}>
                 Thao tác
               </TableCell>
             </TableRow>
@@ -441,10 +462,16 @@ export default function LeaguesPage() {
           sx: {
             borderRadius: "16px",
             overflow: "hidden",
+            bgcolor: (theme) => 
+              theme.palette.mode === "dark" ? 'rgba(18, 18, 18, 0.95)' : 'background.paper',
           },
         }}
       >
-        <DialogTitle>{editingId ? "Chỉnh sửa giải đấu" : "Thêm giải đấu mới"}</DialogTitle>
+        <DialogTitle sx={{
+          color: (theme) => theme.palette.mode === 'dark' ? '#ffffff' : undefined
+        }}>
+          {editingId ? "Chỉnh sửa giải đấu" : "Thêm giải đấu mới"}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField

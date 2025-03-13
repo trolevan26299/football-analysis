@@ -36,6 +36,10 @@ export default function LoadingIndicator({
       thickness={thicknessMap[size]}
       sx={{
         animation: "pulse 1.5s infinite ease-in-out",
+        filter: (theme) => 
+          theme.palette.mode === 'dark' 
+            ? 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.2))' 
+            : 'none',
         "@keyframes pulse": {
           "0%": {
             opacity: 1,
@@ -62,6 +66,10 @@ export default function LoadingIndicator({
         sx={{
           height: size === "small" ? 4 : size === "medium" ? 6 : 8,
           borderRadius: size === "small" ? 2 : size === "medium" ? 3 : 4,
+          boxShadow: (theme) => 
+            theme.palette.mode === 'dark' 
+              ? '0 0 8px rgba(0, 0, 0, 0.3)' 
+              : 'none',
         }}
       />
     </Box>
@@ -76,8 +84,13 @@ export default function LoadingIndicator({
           sx={{
             width: size === "small" ? 6 : size === "medium" ? 10 : 14,
             height: size === "small" ? 6 : size === "medium" ? 10 : 14,
-            backgroundColor: `${color}.main`,
+            backgroundColor: (theme) => 
+              `${theme.palette.mode === 'dark' ? theme.palette[color].light : theme.palette[color].main}`,
             borderRadius: "50%",
+            filter: (theme) => 
+              theme.palette.mode === 'dark' 
+                ? 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.2))' 
+                : 'none',
             animation: "bounce 1.4s infinite ease-in-out both",
             animationDelay: `${dot * 0.16}s`,
             "@keyframes bounce": {
@@ -110,9 +123,11 @@ export default function LoadingIndicator({
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: (theme) =>
-              theme.palette.mode === "light" ? "rgba(255, 255, 255, 0.85)" : "rgba(0, 0, 0, 0.85)",
+              theme.palette.mode === "light" 
+                ? "rgba(255, 255, 255, 0.85)" 
+                : "rgba(10, 17, 34, 0.85)", // Tối hơn và phù hợp với dark theme
             zIndex: 9999,
-            backdropFilter: "blur(4px)",
+            backdropFilter: "blur(8px)", // Tăng độ blur từ 4px lên 8px
           }}
         >
           <Paper
@@ -125,8 +140,18 @@ export default function LoadingIndicator({
               gap: 3,
               maxWidth: "80%",
               background: (theme) =>
-                theme.palette.mode === "light" ? "rgba(255, 255, 255, 0.95)" : "rgba(30, 30, 30, 0.95)",
+                theme.palette.mode === "light" 
+                  ? "rgba(255, 255, 255, 0.95)" 
+                  : "rgba(17, 24, 39, 0.95)", // Phù hợp với màu paper trong theme
               borderRadius: 2,
+              boxShadow: (theme) => 
+                theme.palette.mode === 'dark' 
+                  ? '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 255, 255, 0.05)' 
+                  : '0 8px 16px rgba(0, 0, 0, 0.1)',
+              border: (theme) => 
+                theme.palette.mode === 'dark'
+                  ? '1px solid rgba(255, 255, 255, 0.05)'
+                  : 'none'
             }}
           >
             {variant === "circular" && <CircularLoader />}
@@ -138,6 +163,7 @@ export default function LoadingIndicator({
               color="textSecondary"
               sx={{
                 mt: 2,
+                fontWeight: 500,
                 animation: "fadeInOut 2s infinite ease-in-out",
                 "@keyframes fadeInOut": {
                   "0%": { opacity: 0.7 },
@@ -163,6 +189,11 @@ export default function LoadingIndicator({
         alignItems: "center",
         gap: 1,
         padding: 1,
+        borderRadius: 1,
+        backgroundColor: (theme) => 
+          theme.palette.mode === 'dark' 
+            ? 'rgba(17, 24, 39, 0.4)' 
+            : 'transparent',
       }}
     >
       {variant === "circular" && <CircularLoader />}
@@ -175,6 +206,7 @@ export default function LoadingIndicator({
           color="textSecondary"
           sx={{
             mt: 1,
+            fontWeight: 500,
             animation: "fadeInOut 2s infinite ease-in-out",
             "@keyframes fadeInOut": {
               "0%": { opacity: 0.7 },

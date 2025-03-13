@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ThemeProvider } from "@/theme/theme";
 import { Session } from "next-auth";
-import { Box, CircularProgress, Fade } from "@mui/material";
+import { Box, CircularProgress, Fade, Typography } from "@mui/material";
 
 // Tạo emotion cache cho Material UI với SSR
 export function createEmotionCache() {
@@ -170,38 +170,106 @@ function GlobalLoadingIndicator({ isLoading }: { isLoading: boolean }) {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 9999,
-          backdropFilter: "blur(10px)",
-          backgroundColor: "rgba(0, 0, 0, 0.45)",
+          backdropFilter: "blur(12px)",
+          backgroundColor: (theme) => 
+            theme.palette.mode === 'dark'
+              ? 'rgba(10, 17, 34, 0.75)'
+              : 'rgba(255, 255, 255, 0.75)',
           transition: "all 0.3s ease",
         }}
       >
-        <CircularProgress
-          size={58}
-          thickness={4.5}
+        <Box
           sx={{
-            color: "#ffffff",
-            filter: "drop-shadow(0 0 12px rgba(255, 255, 255, 0.7))",
-            animation: "spin 1.2s linear infinite, pulse-loading 1.5s infinite ease-in-out",
-            "@keyframes spin": {
-              "0%": { transform: "rotate(0deg)" },
-              "100%": { transform: "rotate(360deg)" },
-            },
-            "@keyframes pulse-loading": {
-              "0%": {
-                opacity: 0.7,
-                filter: "drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))",
-              },
-              "50%": {
-                opacity: 1,
-                filter: "drop-shadow(0 0 16px rgba(255, 255, 255, 0.8))",
-              },
-              "100%": {
-                opacity: 0.7,
-                filter: "drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))",
-              },
-            },
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: 3,
+            borderRadius: 2,
+            backgroundColor: (theme) => 
+              theme.palette.mode === 'dark'
+                ? 'rgba(17, 24, 39, 0.6)' 
+                : 'rgba(255, 255, 255, 0.6)',
+            boxShadow: (theme) => 
+              theme.palette.mode === 'dark'
+                ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+                : '0 8px 32px rgba(0, 0, 0, 0.1)',
+            border: (theme) =>
+              theme.palette.mode === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.1)'
+                : '1px solid rgba(0, 0, 0, 0.05)',
+            position: 'relative',
+            overflow: 'hidden',
           }}
-        />
+        >
+          {/* Hiệu ứng sáng xoay */}
+          <Box 
+            sx={{
+              position: 'absolute',
+              width: '200px',
+              height: '200px',
+              background: (theme) => `radial-gradient(circle, ${theme.palette.primary.main}30 0%, transparent 70%)`,
+              top: '-100px',
+              left: '-100px',
+              opacity: 0.7,
+              animation: 'rotate 10s linear infinite',
+              '@keyframes rotate': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' },
+              },
+              zIndex: -1,
+            }}
+          />
+          
+          <CircularProgress
+            size={60}
+            thickness={4.5}
+            sx={{
+              color: (theme) => 
+                theme.palette.mode === 'dark'
+                  ? theme.palette.primary.light
+                  : theme.palette.primary.main,
+              filter: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.3))'
+                  : 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.1))',
+              animation: "spin 1.2s linear infinite, pulse-loading 1.5s infinite ease-in-out",
+              "@keyframes spin": {
+                "0%": { transform: "rotate(0deg)" },
+                "100%": { transform: "rotate(360deg)" },
+              },
+              "@keyframes pulse-loading": {
+                "0%": {
+                  opacity: 0.7,
+                  transform: 'scale(0.98)',
+                },
+                "50%": {
+                  opacity: 1,
+                  transform: 'scale(1.02)',
+                },
+                "100%": {
+                  opacity: 0.7,
+                  transform: 'scale(0.98)',
+                },
+              },
+            }}
+          />
+          
+          <Typography
+            sx={{
+              marginTop: 2,
+              color: 'text.primary',
+              fontWeight: 500,
+              animation: 'fadeText 2s infinite ease-in-out',
+              '@keyframes fadeText': {
+                '0%': { opacity: 0.6 },
+                '50%': { opacity: 1 },
+                '100%': { opacity: 0.6 },
+              }
+            }}
+          >
+            Đang tải...
+          </Typography>
+        </Box>
       </Box>
     </Fade>
   );
