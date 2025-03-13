@@ -1,0 +1,59 @@
+/* Định nghĩa biến CSS toàn cục */
+:root {
+  --background-light: #f8fafc;
+  --text-light: #334155;
+  --background-dark: #0f172a;
+  --text-dark: #e2e8f0;
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-dark: rgba(255, 255, 255, 0.08);
+  --transition-standard: all 0.3s ease;
+}
+
+/* Theme sáng */
+.light-theme {
+  background-color: var(--background-light);
+  color: var(--text-light);
+  transition: var(--transition-standard);
+}
+
+/* Theme tối */
+.dark-theme {
+  background-color: var(--background-dark);
+  color: var(--text-dark);
+  transition: var(--transition-standard);
+}
+
+/* Đảm bảo html và body đều có chiều cao 100% */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Tạo hiệu ứng gradient tinh tế */
+.light-theme::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(at 70% 100%, rgba(220, 240, 255, 0.1) 0, transparent 50%),
+    radial-gradient(at 30% 20%, rgba(200, 230, 255, 0.2) 0, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark-theme::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(at 70% 100%, rgba(30, 41, 59, 0.7) 0, transparent 50%),
+    radial-gradient(at 30% 20%, rgba(30, 58, 138, 0.4) 0, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
