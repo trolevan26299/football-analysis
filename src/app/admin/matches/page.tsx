@@ -41,6 +41,7 @@ import {
   Refresh as RefreshIcon,
   Search as SearchIcon,
   Article as ArticleIcon,
+  Analytics as AnalyticsIcon,
 } from "@mui/icons-material";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
@@ -74,6 +75,7 @@ interface Match {
   round: string;
   analysis: {
     isAnalyzed: boolean;
+    aiStatus: "not_generated" | "processing" | "generated";
     articles: Array<{
       title: string;
       url: string;
@@ -82,7 +84,7 @@ interface Match {
     aiAnalysis: {
       content: string;
       generatedAt: string;
-      status: "pending" | "generated" | "failed";
+      status: "pending" | "generating" | "generated" | "failed";
     };
     wordpressPost: {
       postId: string;
@@ -159,6 +161,16 @@ export default function MatchesPage() {
     matchId: "",
     title: "",
     message: "",
+  });
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [analyzeDialog, setAnalyzeDialog] = useState<{
+    open: boolean;
+    matchId: string;
+    matchName: string;
+  }>({
+    open: false,
+    matchId: "",
+    matchName: "",
   });
 
   // Fetch data
@@ -289,6 +301,49 @@ export default function MatchesPage() {
 
     return matchesSearch && matchesLeague && matchesStatus;
   });
+
+  // Hàm mở dialog xác nhận phân tích
+  const handleOpenAnalyzeDialog = (match: Match) => {
+    setAnalyzeDialog({
+      open: true,
+      matchId: match._id,
+      matchName: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
+    });
+  };
+
+  // Hàm đóng dialog phân tích
+  const handleCloseAnalyzeDialog = () => {
+    setAnalyzeDialog({
+      ...analyzeDialog,
+      open: false,
+    });
+  };
+
+  // Hàm thực hiện phân tích
+  const handleAnalyze = async () => {
+    try {
+      setAnalyzeLoading(true);
+      const response = await fetch(`/api/matches/${analyzeDialog.matchId}/analyze`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Lỗi khi phân tích trận đấu");
+      }
+
+      // Hiển thị thông báo thành công
+      setSuccess("Bắt đầu quá trình phân tích trận đấu thành công");
+      
+      // Đóng dialog và làm mới dữ liệu
+      handleCloseAnalyzeDialog();
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
 
   if (loading) {
     return <LoadingSpinner variant="overlay" message="Đang tải dữ liệu..." />;
@@ -464,8 +519,8 @@ export default function MatchesPage() {
                 </TableCell>
                 <TableCell>
                   <StatusChip
-                    status={match.analysis.isAnalyzed ? "success" : "pending"}
-                    label={match.analysis.isAnalyzed ? "Đã phân tích" : "Chưa phân tích"}
+                    status={match.analysis?.isAnalyzed ? "success" : "pending"}
+                    label={match.analysis?.isAnalyzed ? "Đã phân tích" : "Chưa phân tích"}
                     size="small"
                     variant="filled"
                     withIcon={true}
@@ -514,6 +569,22 @@ export default function MatchesPage() {
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  {/* Thêm nút phân tích */}
+                  {match.status === "scheduled" && (
+                    <Tooltip title="Phân tích trận đấu">
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => handleOpenAnalyzeDialog(match)}
+                        disabled={
+                          match.analysis?.aiStatus === "processing" ||
+                          match.analysis?.aiStatus === "generated"
+                        }
+                      >
+                        <AnalyticsIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -724,6 +795,38 @@ export default function MatchesPage() {
         onCancel={handleCancelDelete}
         severity="error"
       />
+
+      {/* Dialog xác nhận phân tích */}
+      <Dialog open={analyzeDialog.open} onClose={handleCloseAnalyzeDialog}>
+        <DialogTitle>Xác nhận phân tích trận đấu</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Bạn có chắc chắn muốn phân tích trận đấu này?
+          </Typography>
+          <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
+            {analyzeDialog.matchName}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            Quá trình phân tích sẽ:
+            <ul>
+              <li>Tìm kiếm thông tin về hai đội bóng trên internet</li>
+              <li>Thu thập các bài viết phân tích</li>
+              <li>Tạo bài viết phân tích bằng AI</li>
+            </ul>
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAnalyzeDialog}>Hủy</Button>
+          <Button 
+            onClick={handleAnalyze} 
+            variant="contained" 
+            color="primary"
+            disabled={analyzeLoading}
+          >
+            {analyzeLoading ? "Đang xử lý..." : "Phân tích"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

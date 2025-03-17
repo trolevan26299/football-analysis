@@ -40,6 +40,7 @@ import {
   EmojiEvents as LeagueIcon,
   Person as UserIcon,
   Article as PostIcon,
+  DocumentScanner as DocumentScannerIcon,
 } from "@mui/icons-material";
 import ThemeSettings from "@/components/ui/ThemeSettings";
 import { useThemeMode } from "@/theme/theme";
@@ -78,9 +79,9 @@ const menuItems: MenuItem[] = [
     icon: <UserIcon />,
   },
   {
-    title: "Bài viết",
-    path: "/admin/posts",
-    icon: <PostIcon />,
+    title: "Bài phân tích",
+    path: "/articles",
+    icon: <DocumentScannerIcon />,
   },
 ];
 

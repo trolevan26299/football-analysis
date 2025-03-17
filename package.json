@@ -14,7 +14,9 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.7",
     "@mui/material": "^6.4.7",
-    "@mui/x-date-pickers": "^7.0.0",
+    "@mui/x-date-pickers": "^7.27.3",
+    "@react-spring/web": "^9.7.5",
+    "axios": "^1.8.3",
     "bcryptjs": "^2.4.3",
     "date-fns": "^2.30.0",
     "dotenv": "^16.4.7",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@faker-js/faker": "^9.6.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -31,11 +31,7 @@ const matchSchema = new mongoose.Schema({
   },
 
   // Trạng thái trận đấu
-  status: {
-    type: String,
-    enum: ["scheduled", "live", "finished", "postponed", "cancelled"],
-    default: "scheduled",
-  },
+  status: { type: String, required: true },
 
   // Thông tin vòng đấu
   round: {
@@ -43,37 +39,18 @@ const matchSchema = new mongoose.Schema({
     required: true,
   },
 
-  // Thông tin bài viết phân tích
-  analysis: {
-    isAnalyzed: { type: Boolean, default: false },
-    articles: [
-      {
-        title: String,
-        url: String,
-        source: String,
-        content: String,
-        crawledAt: Date,
-      },
-    ],
-    aiAnalysis: {
-      content: String,
-      generatedAt: Date,
-      status: {
-        type: String,
-        enum: ["pending", "generated", "failed"],
-        default: "pending",
-      },
+  // Thông tin tham chiếu đến bài phân tích
+  analysisInfo: {
+    hasArticle: { type: Boolean, default: false },
+    articleId: { 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Article" 
     },
-    wordpressPost: {
-      postId: String,
-      status: {
-        type: String,
-        enum: ["draft", "published", "failed"],
-        default: "draft",
-      },
-      publishedAt: Date,
-      url: String,
-    },
+    analysisStatus: { 
+      type: String, 
+      enum: ["not_analyzed", "in_progress", "completed"],
+      default: "not_analyzed"
+    }
   },
 
   // Metadata
@@ -104,25 +81,15 @@ matchSchema.pre("save", function (next) {
 // Tạo các indexes để tối ưu truy vấn
 matchSchema.index({ leagueId: 1, matchDate: 1 });
 matchSchema.index({ status: 1 });
-matchSchema.index({ "analysis.isAnalyzed": 1 });
-matchSchema.index({ "analysis.wordpressPost.status": 1 });
+matchSchema.index({ "analysisInfo.hasArticle": 1 });
+matchSchema.index({ "analysisInfo.analysisStatus": 1 });
 
 // Virtual field để lấy trạng thái phân tích
-matchSchema.virtual("analysisStatus").get(function () {
-  if (!this?.analysis?.isAnalyzed) return "Chưa phân tích";
-  if (this?.analysis?.aiAnalysis?.status === "generated") return "Đã phân tích";
-  if (this?.analysis.wordpressPost?.status === "published") return "Đã đăng";
-  return "Đang xử lý";
+matchSchema.virtual("analysisStatusText").get(function () {
+  if (!this?.analysisInfo?.hasArticle) return "Chưa phân tích";
+  if (this?.analysisInfo?.analysisStatus === "completed") return "Đã phân tích";
+  if (this?.analysisInfo?.analysisStatus === "in_progress") return "Đang xử lý";
+  return "Chưa phân tích";
 });
 
-// Phương thức để kiểm tra xem trận đấu có thể phân tích chưa
-matchSchema.methods.canAnalyze = function () {
-  return this.analysis.articles.length > 0 && !this.analysis.isAnalyzed;
-};
-
-// Phương thức để kiểm tra xem bài viết có thể đăng WordPress không
-matchSchema.methods.canPublishToWordpress = function () {
-  return this.analysis.aiAnalysis.status === "generated" && this.analysis.wordpressPost.status === "draft";
-};
-
-export const Match = mongoose.models.Match || mongoose.model("Match", matchSchema);
+export const Match = mongoose.models.Match || mongoose.model("Match", matchSchema); 
