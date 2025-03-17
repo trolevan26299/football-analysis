@@ -3,38 +3,8 @@ import { getServerAuthSession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { League } from "@/models/League";
 
-// Define League type
-export interface League {
-  _id: string;
-  name: string;
-  country: string;
-  season: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
-// Mock data
-export const leagues: League[] = [
-  {
-    _id: "1",
-    name: "Premier League",
-    country: "England",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "2",
-    name: "La Liga",
-    country: "Spain",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+
 
 export async function GET() {
   const session = await getServerAuthSession();

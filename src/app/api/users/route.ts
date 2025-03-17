@@ -3,51 +3,7 @@ import { getServerAuthSession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 
-// Define User type
-export interface User {
-  _id: string;
-  username: string;
-  fullName: string;
-  email: string;
-  role: string;
-  status: string;
-  isOnline: boolean;
-  lastLogin: string;
-  currentTasks: number;
-  totalTasksCompleted: number;
-  createdAt: string;
-  updatedAt?: string;
-}
 
-// Mock data
-export const users: User[] = [
-  {
-    _id: "1",
-    username: "ktv001",
-    fullName: "Nguyễn Văn A",
-    email: "ktv001@example.com",
-    role: "ktv",
-    status: "active",
-    isOnline: true,
-    lastLogin: "2024-03-10T08:00:00Z",
-    currentTasks: 2,
-    totalTasksCompleted: 150,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "2",
-    username: "ktv002",
-    fullName: "Trần Thị B",
-    email: "ktv002@example.com",
-    role: "ktv",
-    status: "active",
-    isOnline: false,
-    lastLogin: "2024-03-09T15:30:00Z",
-    currentTasks: 1,
-    totalTasksCompleted: 120,
-    createdAt: "2024-01-02T00:00:00Z",
-  },
-];
 
 export async function GET() {
   const session = await getServerAuthSession();
