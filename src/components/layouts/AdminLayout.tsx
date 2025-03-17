@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -39,8 +39,9 @@ import {
   Dashboard as DashboardIcon,
   EmojiEvents as LeagueIcon,
   Person as UserIcon,
-  Article as PostIcon,
   DocumentScanner as DocumentScannerIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
 import ThemeSettings from "@/components/ui/ThemeSettings";
 import { useThemeMode } from "@/theme/theme";
@@ -53,8 +54,13 @@ const drawerWidth = 240;
 
 interface MenuItem {
   title: string;
-  path: string;
+  path?: string;
   icon: React.ReactNode;
+  children?: {
+    title: string;
+    path: string;
+    icon: React.ReactNode;
+  }[];
 }
 
 const menuItems: MenuItem[] = [
@@ -64,24 +70,30 @@ const menuItems: MenuItem[] = [
     icon: <DashboardIcon />,
   },
   {
-    title: "Giải đấu",
-    path: "/admin/leagues",
-    icon: <LeagueIcon />,
-  },
-  {
     title: "Trận đấu",
     path: "/admin/matches",
     icon: <MatchIcon />,
   },
   {
-    title: "Quản lý KTV",
-    path: "/admin/users",
-    icon: <UserIcon />,
-  },
-  {
     title: "Bài phân tích",
     path: "/articles",
     icon: <DocumentScannerIcon />,
+  },
+  {
+    title: "Settings",
+    icon: <SettingsIcon />,
+    children: [
+      {
+        title: "Giải đấu",
+        path: "/admin/leagues",
+        icon: <LeagueIcon />,
+      },
+      {
+        title: "Quản lý KTV",
+        path: "/admin/users",
+        icon: <UserIcon />,
+      },
+    ],
   },
 ];
 
@@ -148,6 +160,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
+  const [subMenuOpen, setSubMenuOpen] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -190,6 +203,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleThemeSettingsClose = () => {
     setThemeSettingsOpen(false);
+  };
+
+  const handleSubMenuToggle = (index: number) => {
+    setSubMenuOpen(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
   };
 
   if (loading) {
@@ -701,75 +721,196 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </Toolbar>
         <Divider sx={{ opacity: 0.5 }} />
         <List sx={{ p: 1 }}>
-          {menuItems.map((item) => (
-            <ListItem
-              key={item.path}
-              disablePadding
-              sx={{
-                display: "block",
-                mb: 0.5,
-              }}
-            >
-              <ListItemButton
-                component={Link}
-                href={item.path}
+          {menuItems.map((item, index) => (
+            <React.Fragment key={item.path || index}>
+              <ListItem
+                disablePadding
                 sx={{
-                  minHeight: 48,
-                  px: 2.5,
-                  justifyContent: open ? "initial" : "center",
-                  borderRadius: "12px",
-                  position: "relative",
-                  overflow: "hidden",
-                  transition: "all 0.2s",
-                  "&::before":
-                    pathname === item.path
-                      ? {
-                          content: '""',
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: "4px",
-                          background: (theme) =>
-                            `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                          borderRadius: "4px",
-                        }
-                      : {},
-                  backgroundColor:
-                    pathname === item.path
-                      ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
-                      : "transparent",
-                  "&:hover": {
-                    backgroundColor: (theme) =>
-                      alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
-                    transform: "translateY(-2px)",
-                  },
+                  display: "block",
+                  mb: 0.5,
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    minWidth: 0,
-                    mr: open ? 2 : "auto",
-                    justifyContent: "center",
-                    color: pathname === item.path ? "primary.main" : "text.secondary",
-                    transition: "color 0.2s",
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.title}
-                  sx={{
-                    opacity: open ? 1 : 0,
-                    "& .MuiTypography-root": {
-                      fontWeight: pathname === item.path ? 600 : 400,
-                      color: pathname === item.path ? "primary.main" : "text.primary",
-                      transition: "color 0.2s, font-weight 0.2s",
-                    },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
+                {item.children ? (
+                  <ListItemButton
+                    onClick={() => handleSubMenuToggle(index)}
+                    sx={{
+                      minHeight: 48,
+                      px: 2.5,
+                      justifyContent: open ? "initial" : "center",
+                      borderRadius: "12px",
+                      position: "relative",
+                      overflow: "hidden",
+                      transition: "all 0.2s",
+                      backgroundColor: "transparent",
+                      "&:hover": {
+                        backgroundColor: (theme) =>
+                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: open ? 2 : "auto",
+                        justifyContent: "center",
+                        color: "text.secondary",
+                        transition: "color 0.2s",
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.title}
+                      sx={{
+                        opacity: open ? 1 : 0,
+                        "& .MuiTypography-root": {
+                          fontWeight: 400,
+                          color: "text.primary",
+                          transition: "color 0.2s, font-weight 0.2s",
+                        },
+                      }}
+                    />
+                    {open && (subMenuOpen[index] ? <ExpandLessIcon /> : <ExpandMoreIcon />)}
+                  </ListItemButton>
+                ) : (
+                  <ListItemButton
+                    component={Link}
+                    href={item.path || "#"}
+                    sx={{
+                      minHeight: 48,
+                      px: 2.5,
+                      justifyContent: open ? "initial" : "center",
+                      borderRadius: "12px",
+                      position: "relative",
+                      overflow: "hidden",
+                      transition: "all 0.2s",
+                      "&::before":
+                        pathname === item.path
+                          ? {
+                              content: '""',
+                              position: "absolute",
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: "4px",
+                              background: (theme) =>
+                                `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                              borderRadius: "4px",
+                            }
+                          : {},
+                      backgroundColor:
+                        pathname === item.path
+                          ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
+                          : "transparent",
+                      "&:hover": {
+                        backgroundColor: (theme) =>
+                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: open ? 2 : "auto",
+                        justifyContent: "center",
+                        color: pathname === item.path ? "primary.main" : "text.secondary",
+                        transition: "color 0.2s",
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.title}
+                      sx={{
+                        opacity: open ? 1 : 0,
+                        "& .MuiTypography-root": {
+                          fontWeight: pathname === item.path ? 600 : 400,
+                          color: pathname === item.path ? "primary.main" : "text.primary",
+                          transition: "color 0.2s, font-weight 0.2s",
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                )}
+              </ListItem>
+              
+              {item.children && open && subMenuOpen[index] && (
+                <Box sx={{ pl: 2 }}>
+                  {item.children.map((child) => (
+                    <ListItem
+                      key={child.path}
+                      disablePadding
+                      sx={{
+                        display: "block",
+                        mb: 0.5,
+                      }}
+                    >
+                      <ListItemButton
+                        component={Link}
+                        href={child.path}
+                        sx={{
+                          minHeight: 40,
+                          px: 2.5,
+                          ml: 2,
+                          justifyContent: "initial",
+                          borderRadius: "12px",
+                          position: "relative",
+                          overflow: "hidden",
+                          transition: "all 0.2s",
+                          "&::before":
+                            pathname === child.path
+                              ? {
+                                  content: '""',
+                                  position: "absolute",
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: "4px",
+                                  background: (theme) =>
+                                    `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                  borderRadius: "4px",
+                                }
+                              : {},
+                          backgroundColor:
+                            pathname === child.path
+                              ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
+                              : "transparent",
+                          "&:hover": {
+                            backgroundColor: (theme) =>
+                              alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
+                            transform: "translateY(-2px)",
+                          },
+                        }}
+                      >
+                        <ListItemIcon
+                          sx={{
+                            minWidth: 0,
+                            mr: 2,
+                            justifyContent: "center",
+                            color: pathname === child.path ? "primary.main" : "text.secondary",
+                            transition: "color 0.2s",
+                          }}
+                        >
+                          {child.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={child.title}
+                          sx={{
+                            "& .MuiTypography-root": {
+                              fontWeight: pathname === child.path ? 600 : 400,
+                              color: pathname === child.path ? "primary.main" : "text.primary",
+                              transition: "color 0.2s, font-weight 0.2s",
+                            },
+                          }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </Box>
+              )}
+            </React.Fragment>
           ))}
         </List>
         <Divider sx={{ mt: "auto", opacity: 0.5 }} />
@@ -839,7 +980,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </Box>
 
-      {/* Nút Cài đặt giao diện */}
       <ThemeSettings open={themeSettingsOpen} onClose={handleThemeSettingsClose} />
     </Box>
   );

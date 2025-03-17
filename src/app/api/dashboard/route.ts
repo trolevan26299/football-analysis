@@ -25,12 +25,12 @@ export async function GET() {
 
     // Tính toán các thống kê
     const totalMatches = matches.length;
-    const pendingAnalysis = matches.filter((match) => !match.analysis.isAnalyzed).length;
+    const pendingAnalysis = matches.filter((match) => match.analysis && !match.analysis.isAnalyzed).length;
 
     // Tính tổng số bài viết (số trận đấu đã phân tích)
     const totalArticles = matches.filter(
       (match) =>
-        match.analysis.isAnalyzed && match.analysis.wordpressPost && match.analysis.wordpressPost.status === "published"
+        match.analysis && match.analysis.isAnalyzed && match.analysis.wordpressPost && match.analysis.wordpressPost.status === "published"
     ).length;
 
     // Số lượng KTV
@@ -50,22 +50,22 @@ export async function GET() {
 
     // Tạo danh sách bài viết gần đây từ trận đấu có bài viết
     const articlesFromMatches = matches
-      .filter((match) => match.analysis.isAnalyzed)
+      .filter((match) => match.analysis && match.analysis.isAnalyzed)
       .sort((a, b) => {
-        const dateA = a.analysis.wordpressPost?.publishedAt
-          ? new Date(a.analysis.wordpressPost.publishedAt)
-          : new Date(a.analysis.aiAnalysis.generatedAt || Date.now());
-        const dateB = b.analysis.wordpressPost?.publishedAt
-          ? new Date(b.analysis.wordpressPost.publishedAt)
-          : new Date(b.analysis.aiAnalysis.generatedAt || Date.now());
+        const dateA = a.analysis?.wordpressPost?.publishedAt
+          ? new Date(a.analysis?.wordpressPost?.publishedAt)
+          : new Date(a.analysis?.aiAnalysis?.generatedAt || Date.now());
+        const dateB = b.analysis?.wordpressPost?.publishedAt
+          ? new Date(b.analysis?.wordpressPost?.publishedAt)
+          : new Date(b.analysis?.aiAnalysis?.generatedAt || Date.now());
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 5)
       .map((match) => ({
         id: match._id,
         title: `Phân tích: ${match.homeTeam.name} vs ${match.awayTeam.name}`,
-        status: match.analysis.wordpressPost?.status || "draft",
-        createdAt: match.analysis.wordpressPost?.publishedAt || match.analysis.aiAnalysis.generatedAt,
+        status: match.analysis?.wordpressPost?.status || "draft",
+        createdAt: match.analysis?.wordpressPost?.publishedAt || match.analysis?.aiAnalysis?.generatedAt,
       }));
 
     // Tổng hợp dữ liệu dashboard

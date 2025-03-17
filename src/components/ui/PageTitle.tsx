@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Typography, TypographyProps, Box, BoxProps } from "@mui/material";
+import { Typography, TypographyProps, Box } from "@mui/material";
 
 interface PageTitleProps {
   title: string;

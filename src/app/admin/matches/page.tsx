@@ -733,25 +733,31 @@ export default function MatchesPage() {
                 Bài viết đã thu thập
               </Typography>
               <List>
-                {selectedMatch.analysis.articles.map((article, index) => (
-                  <ListItem key={index}>
-                    <ListItemIcon>
-                      <ArticleIcon />
-                    </ListItemIcon>
-                    <ListItemText primary={article.title} secondary={article.source} />
-                    <Button href={article.url} target="_blank" rel="noopener noreferrer">
-                      Xem
-                    </Button>
+                {selectedMatch.analysis?.articles ? (
+                  selectedMatch.analysis.articles.map((article: { title: string; url: string; source: string }, index: number) => (
+                    <ListItem key={index}>
+                      <ListItemIcon>
+                        <ArticleIcon />
+                      </ListItemIcon>
+                      <ListItemText primary={article.title} secondary={article.source} />
+                      <Button href={article.url} target="_blank" rel="noopener noreferrer">
+                        Xem
+                      </Button>
+                    </ListItem>
+                  ))
+                ) : (
+                  <ListItem>
+                    <ListItemText primary="Chưa có bài viết nào được thu thập" />
                   </ListItem>
-                ))}
+                )}
               </List>
 
               <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                 Phân tích AI
               </Typography>
               <Paper sx={{ p: 2, bgcolor: "grey.50" }}>
-                <Typography>{selectedMatch.analysis.aiAnalysis.content || "Chưa có phân tích"}</Typography>
-                {selectedMatch.analysis.aiAnalysis.generatedAt && (
+                <Typography>{selectedMatch.analysis?.aiAnalysis?.content || "Chưa có phân tích"}</Typography>
+                {selectedMatch.analysis?.aiAnalysis?.generatedAt && (
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
                     Tạo lúc: {new Date(selectedMatch.analysis.aiAnalysis.generatedAt).toLocaleString("vi-VN")}
                   </Typography>
@@ -762,20 +768,26 @@ export default function MatchesPage() {
                 Bài viết WordPress
               </Typography>
               <Stack direction="row" spacing={2} alignItems="center">
-                <Chip
-                  label={selectedMatch.analysis.wordpressPost.status}
-                  color={
-                    selectedMatch.analysis.wordpressPost.status === "published"
-                      ? "success"
-                      : selectedMatch.analysis.wordpressPost.status === "draft"
-                      ? "warning"
-                      : "error"
-                  }
-                />
-                {selectedMatch.analysis.wordpressPost.url && (
-                  <Button href={selectedMatch.analysis.wordpressPost.url} target="_blank" rel="noopener noreferrer">
-                    Xem bài viết
-                  </Button>
+                {selectedMatch.analysis?.wordpressPost ? (
+                  <>
+                    <Chip
+                      label={selectedMatch.analysis.wordpressPost.status}
+                      color={
+                        selectedMatch.analysis.wordpressPost.status === "published"
+                          ? "success"
+                          : selectedMatch.analysis.wordpressPost.status === "draft"
+                          ? "warning"
+                          : "error"
+                      }
+                    />
+                    {selectedMatch.analysis.wordpressPost.url && (
+                      <Button href={selectedMatch.analysis.wordpressPost.url} target="_blank" rel="noopener noreferrer">
+                        Xem bài viết
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <Chip label="Chưa có bài viết" color="default" />
                 )}
               </Stack>
             </Box>
