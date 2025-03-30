@@ -12,6 +12,15 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@mui/material', '@mui/icons-material'],
     optimizeCss: true,
+    optimisticClientCache: true,
+    serverMinification: true,
+    forceSwcTransforms: true,
+    typedRoutes: true,
+    turbo: {
+      resolveAlias: {
+        '@mui/icons-material/*': '@mui/icons-material/esm/*'
+      }
+    }
   }
 };
 

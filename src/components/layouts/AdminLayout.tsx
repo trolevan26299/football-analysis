@@ -1,20 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useThemeMode } from "@/theme/theme";
 import {
   ChevronLeft as ChevronLeftIcon,
-  DarkMode as DarkModeIcon,
   Dashboard as DashboardIcon,
-  DocumentScanner as DocumentScannerIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
-  EmojiEvents as LeagueIcon,
-  LightMode as LightModeIcon,
-  Logout,
-  SportsSoccer as MatchIcon,
   Menu as MenuIcon,
-  Settings as SettingsIcon,
-  Person as UserIcon
 } from "@mui/icons-material";
+
+// Lazy load icons để giảm kích thước bundle
+import dynamic from "next/dynamic";
+const DarkModeIcon = dynamic(() => import("@mui/icons-material/DarkMode"), { ssr: false });
+const LightModeIcon = dynamic(() => import("@mui/icons-material/LightMode"), { ssr: false });
+const DocumentScannerIcon = dynamic(() => import("@mui/icons-material/DocumentScanner"), { ssr: false });
+const LeagueIcon = dynamic(() => import("@mui/icons-material/EmojiEvents"), { ssr: false });
+const MatchIcon = dynamic(() => import("@mui/icons-material/SportsSoccer"), { ssr: false });
+const SettingsIcon = dynamic(() => import("@mui/icons-material/Settings"), { ssr: false });
+const UserIcon = dynamic(() => import("@mui/icons-material/Person"), { ssr: false });
+const LogoutIcon = dynamic(() => import("@mui/icons-material/Logout"), { ssr: false });
+
 import {
   Avatar,
   Box,
@@ -39,8 +44,6 @@ import {
 } from "@mui/material";
 import { alpha, CSSObject, styled, Theme } from "@mui/material/styles";
 import { signOut, useSession } from "next-auth/react";
-import dynamic from "next/dynamic";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { memo, useCallback, useEffect, useState } from "react";
 
@@ -232,7 +235,6 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     setAnchorEl(null);
   }, []);
 
-
   const handleSignOut = useCallback(() => {
     handleMenuClose();
     signOut({ callbackUrl: "/auth/signin" });
@@ -416,7 +418,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               }}
             >
               <ListItemIcon>
-                <Logout fontSize="small" />
+                <LogoutIcon fontSize="small" />
               </ListItemIcon>
               Đăng xuất
             </MenuItem>
@@ -451,7 +453,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                       justifyContent: open ? "initial" : "center",
                       borderRadius: "12px",
                       backgroundColor:
-                        subMenuOpen[index] || pathname?.startsWith(item.path || "")
+                        subMenuOpen[index] || item.path?.startsWith(item.path || "")
                           ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
                           : "transparent",
                       "&:hover": {
@@ -484,64 +486,67 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                     {open && (subMenuOpen[index] ? <ExpandLessIcon /> : <ExpandMoreIcon />)}
                   </ListItemButton>
                 ) : (
-                  <ListItemButton
-                    component={Link}
-                    href={item.path || "#"}
-                    sx={{
-                      minHeight: 48,
-                      px: 2.5,
-                      justifyContent: open ? "initial" : "center",
-                      borderRadius: "12px",
-                      position: "relative",
-                      overflow: "hidden",
-                      transition: "all 0.2s",
-                      "&::before":
-                        pathname === item.path
-                          ? {
-                              content: '""',
-                              position: "absolute",
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: "4px",
-                              background: (theme) =>
-                                `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                              borderRadius: "4px",
-                            }
-                          : {},
-                      backgroundColor:
-                        pathname === item.path
-                          ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
-                          : "transparent",
-                      "&:hover": {
-                        backgroundColor: (theme) =>
-                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
-                      },
-                    }}
+                  <div 
+                    onClick={() => item.path && router.push(item.path as any)}
+                    style={{ textDecoration: 'none', display: 'block', cursor: 'pointer' }}
                   >
-                    <ListItemIcon
+                    <ListItemButton
                       sx={{
-                        minWidth: 0,
-                        mr: open ? 3 : "auto",
-                        justifyContent: "center",
-                        color:
-                          pathname === item.path ? "primary.main" : "text.primary",
-                      }}
-                    >
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.title}
-                      sx={{
-                        opacity: open ? 1 : 0,
-                        "& .MuiTypography-root": {
-                          fontWeight: pathname === item.path ? 500 : 400,
-                          color: pathname === item.path ? "primary.main" : "text.primary",
-                          transition: "color 0.2s, font-weight 0.2s",
+                        minHeight: 48,
+                        px: 2.5,
+                        justifyContent: open ? "initial" : "center",
+                        borderRadius: "12px",
+                        position: "relative",
+                        overflow: "hidden",
+                        transition: "all 0.2s",
+                        "&::before":
+                          pathname === item.path
+                            ? {
+                                content: '""',
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: "4px",
+                                background: (theme) =>
+                                  `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                borderRadius: "4px",
+                              }
+                            : {},
+                        backgroundColor:
+                          pathname === item.path
+                            ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
+                            : "transparent",
+                        "&:hover": {
+                          backgroundColor: (theme) =>
+                            alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
                         },
                       }}
-                    />
-                  </ListItemButton>
+                    >
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 0,
+                          mr: open ? 3 : "auto",
+                          justifyContent: "center",
+                          color:
+                            pathname === item.path ? "primary.main" : "text.primary",
+                        }}
+                      >
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.title}
+                        sx={{
+                          opacity: open ? 1 : 0,
+                          "& .MuiTypography-root": {
+                            fontWeight: pathname === item.path ? 500 : 400,
+                            color: pathname === item.path ? "primary.main" : "text.primary",
+                            transition: "color 0.2s, font-weight 0.2s",
+                          },
+                        }}
+                      />
+                    </ListItemButton>
+                  </div>
                 )}
               </ListItem>
 
@@ -556,64 +561,67 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                         mb: 0.5,
                       }}
                     >
-                      <ListItemButton
-                        component={Link}
-                        href={child.path}
-                        sx={{
-                          minHeight: 40,
-                          px: 2.5,
-                          ml: 2,
-                          justifyContent: "initial",
-                          borderRadius: "12px",
-                          position: "relative",
-                          overflow: "hidden",
-                          transition: "all 0.2s",
-                          "&::before":
-                            pathname === child.path
-                              ? {
-                                  content: '""',
-                                  position: "absolute",
-                                  left: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: "4px",
-                                  background: (theme) =>
-                                    `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                                  borderRadius: "4px",
-                                }
-                              : {},
-                          backgroundColor:
-                            pathname === child.path
-                              ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
-                              : "transparent",
-                          "&:hover": {
-                            backgroundColor: (theme) =>
-                              alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
-                          },
-                        }}
+                      <div 
+                        onClick={() => router.push(child.path as any)}
+                        style={{ textDecoration: 'none', display: 'block', cursor: 'pointer' }}
                       >
-                        <ListItemIcon
+                        <ListItemButton
                           sx={{
-                            minWidth: 0,
-                            mr: 3,
-                            justifyContent: "center",
-                            color:
-                              pathname === child.path ? "primary.main" : "text.primary",
-                          }}
-                        >
-                          {child.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={child.title}
-                          sx={{
-                            "& .MuiTypography-root": {
-                              fontWeight: pathname === child.path ? 500 : 400,
-                              color: pathname === child.path ? "primary.main" : "text.primary",
-                              transition: "color 0.2s, font-weight 0.2s",
+                            minHeight: 40,
+                            px: 2.5,
+                            ml: 2,
+                            justifyContent: "initial",
+                            borderRadius: "12px",
+                            position: "relative",
+                            overflow: "hidden",
+                            transition: "all 0.2s",
+                            "&::before":
+                              pathname === child.path
+                                ? {
+                                    content: '""',
+                                    position: "absolute",
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: "4px",
+                                    background: (theme) =>
+                                      `linear-gradient(to bottom, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                    borderRadius: "4px",
+                                  }
+                                : {},
+                            backgroundColor:
+                              pathname === child.path
+                                ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
+                                : "transparent",
+                            "&:hover": {
+                              backgroundColor: (theme) =>
+                                alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
                             },
                           }}
-                        />
-                      </ListItemButton>
+                        >
+                          <ListItemIcon
+                            sx={{
+                              minWidth: 0,
+                              mr: 3,
+                              justifyContent: "center",
+                              color:
+                                pathname === child.path ? "primary.main" : "text.primary",
+                            }}
+                          >
+                            {child.icon}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={child.title}
+                            sx={{
+                              "& .MuiTypography-root": {
+                                fontWeight: pathname === child.path ? 500 : 400,
+                                color: pathname === child.path ? "primary.main" : "text.primary",
+                                transition: "color 0.2s, font-weight 0.2s",
+                              },
+                            }}
+                          />
+                        </ListItemButton>
+                      </div>
                     </ListItem>
                   ))}
                 </Box>
