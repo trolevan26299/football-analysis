@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { memo, useEffect, useState, useCallback } from "react";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import StatsCard from "@/components/ui/StatsCard";
@@ -24,13 +24,10 @@ import {
   Typography,
   Tabs,
   Tab,
-  Avatar,
   Chip,
   useTheme,
   useMediaQuery,
-  Fade,
 } from "@mui/material";
-import { useEffect, useState } from "react";
 import PageTitle from "@/components/ui/PageTitle";
 
 interface DashboardStats {
@@ -55,7 +52,16 @@ interface DashboardStats {
   }>;
 }
 
-export default function AdminDashboard() {
+// Tạo thành phần TabPanel riêng và memoize để tránh re-render
+const TabPanel = memo(function TabPanel({ children, value, index }: { children: React.ReactNode; value: number; index: number }) {
+  return (
+    <Box role="tabpanel" hidden={value !== index} sx={{ p: { xs: 2, md: 3 } }}>
+      {value === index && children}
+    </Box>
+  );
+});
+
+function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +69,7 @@ export default function AdminDashboard() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -76,15 +82,15 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = useCallback((event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
-  };
+  }, []);
 
   if (loading) {
     return <LoadingSpinner variant="overlay" message="Đang tải dữ liệu..." />;
@@ -125,10 +131,6 @@ export default function AdminDashboard() {
             textTransform: "none",
             px: 2,
             fontWeight: "medium",
-            boxShadow: "none",
-            "&:hover": {
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-            },
           }}
         >
           Làm mới dữ liệu
@@ -144,8 +146,7 @@ export default function AdminDashboard() {
             icon={<MatchIcon />}
             color="primary"
             subtitle="Số lượng trận đã thêm vào hệ thống"
-            delay={100}
-            onClick={() => (window.location.href = "/admin/matches")}
+            onClick={() => window.location.href = "/admin/matches"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -157,8 +158,7 @@ export default function AdminDashboard() {
             subtitle="Trận đấu cần phân tích"
             trendValue={stats?.pendingAnalysis ? Math.round((stats.pendingAnalysis / stats.totalMatches) * 100) : 0}
             trendLabel="so với tổng số"
-            delay={200}
-            onClick={() => (window.location.href = "/admin/matches?filter=pending")}
+            onClick={() => window.location.href = "/admin/matches?filter=pending"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -168,8 +168,7 @@ export default function AdminDashboard() {
             icon={<ArticleIcon />}
             color="success"
             subtitle="Số bài phân tích đã xuất bản"
-            delay={300}
-            onClick={() => (window.location.href = "/admin/posts")}
+            onClick={() => window.location.href = "/admin/posts"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -179,8 +178,7 @@ export default function AdminDashboard() {
             icon={<UserIcon />}
             color="secondary"
             subtitle="Số lượng KTV trong hệ thống"
-            delay={400}
-            onClick={() => (window.location.href = "/admin/users")}
+            onClick={() => window.location.href = "/admin/users"}
           />
         </Grid>
       </Grid>
@@ -215,162 +213,106 @@ export default function AdminDashboard() {
         </Box>
 
         {/* Recent Matches */}
-        <Box role="tabpanel" hidden={activeTab !== 0} sx={{ p: { xs: 2, md: 3 } }}>
-          {activeTab === 0 && (
-            <Fade in={activeTab === 0} timeout={500}>
-              <Box>
-                {stats?.recentMatches && stats.recentMatches.length > 0 ? (
-                  <List sx={{ width: "100%" }}>
-                    {stats.recentMatches.map((match, index) => (
-                      <React.Fragment key={match.id}>
-                        <ListItem
-                          alignItems="flex-start"
-                          sx={{
-                            p: 2,
-                            transition: "all 0.2s ease",
-                            borderRadius: 2,
-                            "&:hover": {
-                              backgroundColor: "rgba(0,0,0,0.03)",
-                              transform: "translateX(5px)",
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 2 }}>
-                            <Avatar
-                              sx={{
-                                bgcolor: "primary.main",
-                                width: 40,
-                                height: 40,
-                              }}
-                            >
-                              {index + 1}
-                            </Avatar>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {match.homeTeam} vs {match.awayTeam}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {new Date(match.date).toLocaleDateString("vi-VN", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
-                              </Typography>
-                            </Box>
-                            <Chip
-                              label={match.status === "completed" ? "Hoàn thành" : "Chờ xử lý"}
-                              color={match.status === "completed" ? "success" : "warning"}
-                              size="small"
-                              sx={{ fontWeight: "medium" }}
-                            />
-                          </Box>
-                        </ListItem>
-                        {index < stats.recentMatches.length - 1 && (
-                          <Divider variant="inset" component="li" sx={{ ml: 7 }} />
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                ) : (
-                  <Box sx={{ p: 4, textAlign: "center" }}>
-                    <Typography variant="subtitle1" color="text.secondary">
-                      Không có trận đấu gần đây
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={{ mt: 2, textAlign: "right" }}>
-                  <Button
-                    color="primary"
-                    onClick={() => (window.location.href = "/admin/matches")}
-                    sx={{ textTransform: "none" }}
+        <TabPanel value={activeTab} index={0}>
+          {stats?.recentMatches && stats.recentMatches.length > 0 ? (
+            <List sx={{ width: "100%" }}>
+              {stats.recentMatches.map((match, index) => (
+                <React.Fragment key={match.id}>
+                  <ListItem
+                    alignItems="flex-start"
+                    sx={{
+                      p: 2,
+                      transition: "all 0.2s ease",
+                      borderRadius: 2,
+                      "&:hover": {
+                        backgroundColor: "rgba(0,0,0,0.03)",
+                      },
+                    }}
                   >
-                    Xem tất cả trận đấu
-                  </Button>
-                </Box>
-              </Box>
-            </Fade>
+                    <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 2 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {match.homeTeam} vs {match.awayTeam}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(match.date).toLocaleDateString("vi-VN", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={match.status === "completed" ? "Hoàn thành" : "Chờ xử lý"}
+                        color={match.status === "completed" ? "success" : "warning"}
+                        size="small"
+                      />
+                    </Box>
+                  </ListItem>
+                  {index < stats.recentMatches.length - 1 && (
+                    <Divider />
+                  )}
+                </React.Fragment>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body1" color="text.secondary" sx={{ py: 5, textAlign: "center" }}>
+              Không có trận đấu gần đây
+            </Typography>
           )}
-        </Box>
+        </TabPanel>
 
         {/* Recent Articles */}
-        <Box role="tabpanel" hidden={activeTab !== 1} sx={{ p: { xs: 2, md: 3 } }}>
-          {activeTab === 1 && (
-            <Fade in={activeTab === 1} timeout={500}>
-              <Box>
-                {stats?.recentArticles && stats.recentArticles.length > 0 ? (
-                  <List sx={{ width: "100%" }}>
-                    {stats.recentArticles.map((article, index) => (
-                      <React.Fragment key={article.id}>
-                        <ListItem
-                          alignItems="flex-start"
-                          sx={{
-                            p: 2,
-                            transition: "all 0.2s ease",
-                            borderRadius: 2,
-                            "&:hover": {
-                              backgroundColor: "rgba(0,0,0,0.03)",
-                              transform: "translateX(5px)",
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 2 }}>
-                            <Avatar
-                              sx={{
-                                bgcolor: "secondary.main",
-                                width: 40,
-                                height: 40,
-                              }}
-                            >
-                              <ArticleIcon />
-                            </Avatar>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {article.title}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {article.createdAt
-                                  ? new Date(article.createdAt).toLocaleDateString("vi-VN", {
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    })
-                                  : "Chưa cập nhật"}
-                              </Typography>
-                            </Box>
-                            <Chip
-                              label={article.status === "published" ? "Đã xuất bản" : "Bản nháp"}
-                              color={article.status === "published" ? "success" : "default"}
-                              size="small"
-                              sx={{ fontWeight: "medium" }}
-                            />
-                          </Box>
-                        </ListItem>
-                        {index < stats.recentArticles.length - 1 && (
-                          <Divider variant="inset" component="li" sx={{ ml: 7 }} />
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                ) : (
-                  <Box sx={{ p: 4, textAlign: "center" }}>
-                    <Typography variant="subtitle1" color="text.secondary">
-                      Không có bài viết gần đây
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={{ mt: 2, textAlign: "right" }}>
-                  <Button
-                    color="primary"
-                    onClick={() => (window.location.href = "/admin/posts")}
-                    sx={{ textTransform: "none" }}
+        <TabPanel value={activeTab} index={1}>
+          {stats?.recentArticles && stats.recentArticles.length > 0 ? (
+            <List sx={{ width: "100%" }}>
+              {stats.recentArticles.map((article, index) => (
+                <React.Fragment key={article.id}>
+                  <ListItem
+                    alignItems="flex-start"
+                    sx={{
+                      p: 2,
+                      transition: "all 0.2s ease",
+                      borderRadius: 2,
+                      "&:hover": {
+                        backgroundColor: "rgba(0,0,0,0.03)",
+                      },
+                    }}
                   >
-                    Xem tất cả bài viết
-                  </Button>
-                </Box>
-              </Box>
-            </Fade>
+                    <Box sx={{ display: "flex", width: "100%", alignItems: "center", gap: 2 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                          {article.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {article.createdAt
+                            ? new Date(article.createdAt).toLocaleDateString("vi-VN", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })
+                            : "Chưa cập nhật"}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={article.status === "published" ? "Đã xuất bản" : "Bản nháp"}
+                        color={article.status === "published" ? "success" : "default"}
+                        size="small"
+                      />
+                    </Box>
+                  </ListItem>
+                  {index < stats.recentArticles.length - 1 && (
+                    <Divider />
+                  )}
+                </React.Fragment>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body1" color="text.secondary" sx={{ py: 5, textAlign: "center" }}>
+              Không có bài viết gần đây
+            </Typography>
           )}
-        </Box>
+        </TabPanel>
       </Paper>
 
       {/* Additional stats */}
@@ -419,7 +361,7 @@ export default function AdminDashboard() {
             <Box sx={{ mt: 3, textAlign: "right" }}>
               <Button
                 color="primary"
-                onClick={() => (window.location.href = "/admin/leagues")}
+                onClick={() => window.location.href = "/admin/leagues"}
                 sx={{ textTransform: "none" }}
               >
                 Quản lý giải đấu
@@ -460,7 +402,7 @@ export default function AdminDashboard() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => (window.location.href = "/admin/matches/new")}
+                  onClick={() => window.location.href = "/admin/matches/new"}
                   sx={{ borderRadius: 2, textTransform: "none" }}
                 >
                   Thêm
@@ -472,7 +414,7 @@ export default function AdminDashboard() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => (window.location.href = "/admin/users")}
+                  onClick={() => window.location.href = "/admin/users"}
                   sx={{ borderRadius: 2, textTransform: "none" }}
                 >
                   Quản lý
@@ -484,7 +426,7 @@ export default function AdminDashboard() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => (window.location.href = "/admin/reports")}
+                  onClick={() => window.location.href = "/admin/reports"}
                   sx={{ borderRadius: 2, textTransform: "none" }}
                 >
                   Xem
@@ -497,3 +439,5 @@ export default function AdminDashboard() {
     </Box>
   );
 }
+
+export default memo(AdminDashboard);

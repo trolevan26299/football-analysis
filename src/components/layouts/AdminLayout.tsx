@@ -1,54 +1,54 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useThemeMode } from "@/theme/theme";
 import {
+  ChevronLeft as ChevronLeftIcon,
+  DarkMode as DarkModeIcon,
+  Dashboard as DashboardIcon,
+  DocumentScanner as DocumentScannerIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  EmojiEvents as LeagueIcon,
+  LightMode as LightModeIcon,
+  Logout,
+  SportsSoccer as MatchIcon,
+  Menu as MenuIcon,
+  Settings as SettingsIcon,
+  Person as UserIcon
+} from "@mui/icons-material";
+import {
+  Avatar,
   Box,
-  Drawer as MuiDrawer,
-  AppBar as MuiAppBar,
-  Toolbar,
-  List,
-  Typography,
+  CircularProgress,
   Divider,
   IconButton,
+  List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Avatar,
   Menu,
   MenuItem,
-  Badge,
+  AppBar as MuiAppBar,
+  AppBarProps as MuiAppBarProps,
+  Drawer as MuiDrawer,
+  Toolbar,
   Tooltip,
-  Paper,
-  Button,
-  useTheme,
+  Typography,
   useMediaQuery,
-  CircularProgress,
+  useTheme
 } from "@mui/material";
-import {
-  Menu as MenuIcon,
-  ChevronLeft as ChevronLeftIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
-  Settings as SettingsIcon,
-  Notifications as NotificationsIcon,
-  Logout,
-  SportsSoccer as MatchIcon,
-  Dashboard as DashboardIcon,
-  EmojiEvents as LeagueIcon,
-  Person as UserIcon,
-  DocumentScanner as DocumentScannerIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-} from "@mui/icons-material";
-import ThemeSettings from "@/components/ui/ThemeSettings";
-import { useThemeMode } from "@/theme/theme";
-import { alpha } from "@mui/material/styles";
-import { styled } from "@mui/material/styles";
-import { CSSObject, Theme } from "@mui/material/styles";
-import { AppBarProps as MuiAppBarProps } from "@mui/material";
+import { alpha, CSSObject, styled, Theme } from "@mui/material/styles";
+import { signOut, useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import React, { memo, useCallback, useEffect, useState } from "react";
+
+// Sử dụng dynamic import để lazy load component ThemeSettings
+const ThemeSettings = dynamic(() => import("@/components/ui/ThemeSettings"), {
+  loading: () => <div style={{ width: 300, height: 400 }}></div>,
+  ssr: false
+});
 
 const drawerWidth = 240;
 
@@ -63,6 +63,7 @@ interface MenuItem {
   }[];
 }
 
+// Định nghĩa các mục menu - cached để tránh tạo lại giữa các lần render
 const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
@@ -70,30 +71,24 @@ const menuItems: MenuItem[] = [
     icon: <DashboardIcon />,
   },
   {
-    title: "Trận đấu",
+    title: "Quản lý trận đấu",
     path: "/admin/matches",
     icon: <MatchIcon />,
+  },
+  {
+    title: "Quản lý giải đấu",
+    path: "/admin/leagues",
+    icon: <LeagueIcon />,
+  },
+  {
+    title: "Quản lý người dùng",
+    path: "/admin/users",
+    icon: <UserIcon />,
   },
   {
     title: "Bài phân tích",
     path: "/articles",
     icon: <DocumentScannerIcon />,
-  },
-  {
-    title: "Settings",
-    icon: <SettingsIcon />,
-    children: [
-      {
-        title: "Giải đấu",
-        path: "/admin/leagues",
-        icon: <LeagueIcon />,
-      },
-      {
-        title: "Quản lý KTV",
-        path: "/admin/users",
-        icon: <UserIcon />,
-      },
-    ],
   },
 ];
 
@@ -101,40 +96,39 @@ interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
 
-const AppBar = styled(MuiAppBar, {
+// Memo các component con để tránh re-render không cần thiết
+const MemoizedAppBar = memo(styled(MuiAppBar, {
   shouldForwardProp: (prop) => prop !== "open",
 })<AppBarProps>(({ theme, open }) => ({
   zIndex: theme.zIndex.drawer + 1,
-  backgroundColor: theme.palette.mode === "light" ? theme.palette.primary.main : theme.palette.background.paper,
-  borderBottom: theme.palette.mode === "light" ? "none" : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-  boxShadow: theme.palette.mode === "light" ? "0 1px 2px rgba(0,0,0,0.1)" : "0 1px 2px rgba(0,0,0,0.3)",
-  transition: "none",
+  backgroundColor: theme.palette.mode === "dark" ? alpha(theme.palette.background.paper, 0.8) : alpha("#fff", 0.9),
+  color: theme.palette.text.primary,
+  backdropFilter: "blur(12px)",
+  boxShadow: "none",
+  borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+  transition: theme.transitions.create(["width", "margin"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
   ...(open && {
+    marginLeft: drawerWidth,
     width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
+    transition: theme.transitions.create(["width", "margin"], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
   }),
-}));
-
-const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== "open" })(({ theme, open }) => ({
-  width: drawerWidth,
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-  boxSizing: "border-box",
-  ...(open && {
-    ...openedMixin(theme),
-    "& .MuiDrawer-paper": openedMixin(theme),
-  }),
-  ...(!open && {
-    ...closedMixin(theme),
-    "& .MuiDrawer-paper": closedMixin(theme),
-  }),
-}));
+})));
 
 const openedMixin = (theme: Theme): CSSObject => ({
   width: drawerWidth,
-  transition: "none",
+  backgroundColor:
+    theme.palette.mode === "light" ? "#fff" : theme.palette.background.paper,
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
   overflowX: "hidden",
-  backgroundColor: theme.palette.mode === "light" ? "#fff" : theme.palette.background.paper,
 });
 
 const closedMixin = (theme: Theme): CSSObject => ({
@@ -147,7 +141,58 @@ const closedMixin = (theme: Theme): CSSObject => ({
   },
 });
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+// Memo các component con để tránh re-render không cần thiết
+const MemoizedDrawer = memo(styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== "open" })(
+  ({ theme, open }) => ({
+    width: drawerWidth,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+    ...(open && {
+      ...openedMixin(theme),
+      "& .MuiDrawer-paper": openedMixin(theme),
+    }),
+    ...(!open && {
+      ...closedMixin(theme),
+      "& .MuiDrawer-paper": closedMixin(theme),
+    }),
+  })
+));
+
+// Memo LoadingSpinner component
+const LoadingSpinner = memo(function LoadingSpinner() {
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        backdropFilter: "blur(10px)",
+        backgroundColor: "rgba(0, 0, 0, 0.45)",
+        transition: "all 0.3s ease",
+      }}
+    >
+      <CircularProgress
+        size={58}
+        thickness={4.5}
+        sx={{
+          color: "#ffffff",
+          filter: "drop-shadow(0 0 12px rgba(255, 255, 255, 0.7))",
+        }}
+      />
+    </Box>
+  );
+});
+
+// Memo để tránh re-render không cần thiết
+function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -157,7 +202,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const [open, setOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
   const [subMenuOpen, setSubMenuOpen] = useState<Record<number, boolean>>({});
@@ -176,95 +220,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setOpen(!isMobile);
   }, [isMobile]);
 
-  const handleDrawerToggle = () => {
-    setOpen(!open);
-  };
+  const handleDrawerToggle = useCallback(() => {
+    setOpen(prev => !prev);
+  }, []);
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
 
-  const handleNotificationMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationAnchorEl(event.currentTarget);
-  };
 
-  const handleNotificationMenuClose = () => {
-    setNotificationAnchorEl(null);
-  };
-
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     handleMenuClose();
     signOut({ callbackUrl: "/auth/signin" });
-  };
+  }, [handleMenuClose]);
 
-  const handleThemeSettingsClose = () => {
+  const handleThemeSettingsClose = useCallback(() => {
     setThemeSettingsOpen(false);
-  };
+  }, []);
 
-  const handleSubMenuToggle = (index: number) => {
+  const handleSubMenuToggle = useCallback((index: number) => {
     setSubMenuOpen(prev => ({
       ...prev,
       [index]: !prev[index]
     }));
-  };
+  }, []);
 
   if (loading) {
-    return (
-      <Box
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 9999,
-          backdropFilter: "blur(10px)",
-          backgroundColor: "rgba(0, 0, 0, 0.45)",
-          transition: "all 0.3s ease",
-        }}
-      >
-        <CircularProgress
-          size={58}
-          thickness={4.5}
-          sx={{
-            color: "#ffffff",
-            filter: "drop-shadow(0 0 12px rgba(255, 255, 255, 0.7))",
-            animation: "spin 1.2s linear infinite, pulse-loading 1.5s infinite ease-in-out",
-            "@keyframes spin": {
-              "0%": { transform: "rotate(0deg)" },
-              "100%": { transform: "rotate(360deg)" },
-            },
-            "@keyframes pulse-loading": {
-              "0%": {
-                opacity: 0.7,
-                filter: "drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))",
-              },
-              "50%": {
-                opacity: 1,
-                filter: "drop-shadow(0 0 16px rgba(255, 255, 255, 0.8))",
-              },
-              "100%": {
-                opacity: 0.7,
-                filter: "drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))",
-              },
-            },
-          }}
-        />
-      </Box>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
     <Box sx={{ display: "flex" }}>
-      <AppBar position="fixed" open={open}>
+      <MemoizedAppBar position="fixed" open={open}>
         <Toolbar>
           <IconButton
             color="inherit"
@@ -303,431 +294,152 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Football Analysis System
           </Typography>
 
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Tooltip title={themeMode === "dark" ? "Chế độ sáng" : "Chế độ tối"} arrow>
-              <IconButton
-                color="inherit"
-                onClick={toggleThemeMode}
-                sx={{
-                  mr: 1.5,
-                  backgroundColor: "rgba(255, 255, 255, 0.12)",
-                  backdropFilter: "blur(4px)",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "12px",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.2)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
-                  },
-                }}
-              >
-                {themeMode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Cài đặt giao diện" arrow>
-              <IconButton
-                color="inherit"
-                onClick={() => setThemeSettingsOpen(true)}
-                sx={{
-                  mr: 1.5,
-                  backgroundColor: "rgba(255, 255, 255, 0.12)",
-                  backdropFilter: "blur(4px)",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "12px",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.2)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
-                  },
-                }}
-              >
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Thông báo" arrow>
-              <IconButton
-                color="inherit"
-                onClick={handleNotificationMenuOpen}
-                sx={{
-                  mr: 1.5,
-                  backgroundColor: "rgba(255, 255, 255, 0.12)",
-                  backdropFilter: "blur(4px)",
-                  width: 36,
-                  height: 36,
-                  borderRadius: "12px",
-                  transition: "all 0.15s",
-                  "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.2)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
-                  },
-                }}
-              >
-                <Badge
-                  badgeContent={3}
-                  color="error"
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      backgroundColor: "#ff4d4f",
-                      boxShadow: "0 0 0 2px #ffffff55",
-                      fontWeight: "bold",
-                    },
-                  }}
-                >
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Tài khoản" arrow>
-              <IconButton
-                color="inherit"
-                onClick={handleMenuOpen}
-                sx={{
-                  p: 0.5,
-                  border: "2px solid rgba(255, 255, 255, 0.2)",
-                  borderRadius: "12px",
-                  transition: "all 0.15s",
-                  overflow: "hidden",
-                  "&:hover": {
-                    borderColor: "rgba(255, 255, 255, 0.3)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
-                  },
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    background: (theme) =>
-                      `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    fontSize: 16,
-                    fontWeight: "bold",
-                  }}
-                >
-                  {session?.user?.username?.[0]?.toUpperCase()}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      <Menu
-        anchorEl={notificationAnchorEl}
-        open={Boolean(notificationAnchorEl)}
-        onClose={handleNotificationMenuClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-        PaperProps={{
-          elevation: 3,
-          sx: {
-            borderRadius: "16px",
-            minWidth: 320,
-            maxHeight: 400,
-            overflow: "auto",
-            mt: 1.5,
-            border: (theme) =>
-              `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
-            boxShadow: (theme) =>
-              `0 10px 40px -10px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.2)}`,
-            backdropFilter: "blur(4px)",
-          },
-        }}
-      >
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight="bold">
-            Thông báo
-          </Typography>
-        </Box>
-        <MenuItem
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-              Có 3 trận đấu mới chờ phân tích
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              5 phút trước
-            </Typography>
-          </Box>
-        </MenuItem>
-        <MenuItem
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-              Bài viết &quot;Man United vs Liverpool&quot; đã được xuất bản
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              1 giờ trước
-            </Typography>
-          </Box>
-        </MenuItem>
-        <MenuItem
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-              KTV mới đã đăng ký
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              2 giờ trước
-            </Typography>
-          </Box>
-        </MenuItem>
-        <Box
-          sx={{
-            p: 1.5,
-            borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            textAlign: "center",
-          }}
-        >
-          <Button
-            size="small"
-            color="primary"
-            variant="text"
+          {/* Nút chuyển đổi chế độ theme */}
+          <IconButton
+            onClick={toggleThemeMode}
+            color="inherit"
             sx={{
-              borderRadius: "20px",
-              px: 2,
-              fontSize: "0.75rem",
-              fontWeight: 500,
+              mx: 1,
+              width: 40,
+              height: 40,
+              borderRadius: "12px",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(4px)",
+              transition: "all 0.3s ease",
               "&:hover": {
-                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
               },
             }}
           >
-            Xem tất cả
-          </Button>
-        </Box>
-      </Menu>
+            {themeMode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
 
-      <Menu
-        id="menu-appbar"
-        anchorEl={anchorEl}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-        keepMounted
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          elevation: 3,
-          sx: {
-            borderRadius: "16px",
-            minWidth: 200,
-            mt: 1.5,
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-            backgroundColor: (theme) => theme.palette.background.paper,
-            color: (theme) => theme.palette.text.primary,
-            boxShadow: (theme) =>
-              `0 10px 40px -10px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.2)}`,
-            backdropFilter: "blur(4px)",
-            backgroundImage: (theme) =>
-              theme.palette.mode === "dark"
-                ? "linear-gradient(to bottom, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))"
-                : "none",
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            router.push("/admin/profile");
-          }}
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <ListItemIcon>
-            <Avatar
-              sx={{
-                width: 24,
-                height: 24,
-                background: (theme) =>
-                  `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                fontSize: 12,
-                fontWeight: "bold",
-              }}
-            >
-              {session?.user?.username?.[0]?.toUpperCase()}
-            </Avatar>
-          </ListItemIcon>
-          Hồ sơ
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            router.push("/admin/settings");
-          }}
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <ListItemIcon>
-            <SettingsIcon
-              fontSize="small"
-              sx={{
-                color: (theme) =>
-                  theme.palette.mode === "dark" ? theme.palette.primary.light : theme.palette.primary.main,
-              }}
-            />
-          </ListItemIcon>
-          Cài đặt
-        </MenuItem>
-        <Divider sx={{ my: 1, opacity: 0.5 }} />
-        <MenuItem
-          onClick={handleSignOut}
-          sx={{
-            p: 2,
-            transition: "background-color 0.15s",
-            borderLeft: "3px solid transparent",
-            "&:hover": {
-              borderLeft: (theme) => `3px solid ${theme.palette.error.main}`,
-              backgroundColor: (theme) => alpha(theme.palette.action.hover, 0.7),
-            },
-          }}
-        >
-          <ListItemIcon>
-            <Logout
-              fontSize="small"
-              sx={{
-                color: (theme) =>
-                  theme.palette.mode === "dark" ? theme.palette.primary.light : theme.palette.primary.main,
-              }}
-            />
-          </ListItemIcon>
-          Đăng xuất
-        </MenuItem>
-      </Menu>
-
-      <Drawer variant={isMobile ? "temporary" : "permanent"} open={open} onClose={handleDrawerToggle}>
-        <Toolbar
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            p: 2,
-            borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            minHeight: 64,
-          }}
-        >
-          <Box
+          {/* Nút setting */}
+          <IconButton
+            color="inherit"
+            onClick={() => setThemeSettingsOpen(true)}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-              transition: theme.transitions.create(["width", "margin"], {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
+              mx: 1,
+              width: 40,
+              height: 40,
+              borderRadius: "12px",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(4px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+              },
             }}
           >
-            <Avatar
+            <SettingsIcon />
+          </IconButton>
+
+          {/* Avatar và menu người dùng */}
+          <Tooltip title={`Xin chào ${session?.user?.username || 'Admin'}`}>
+            <IconButton
+              onClick={handleMenuOpen}
+              size="small"
               sx={{
-                background: (theme) =>
-                  `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                width: 44,
-                height: 44,
-                mr: open ? 1.5 : 0,
-                boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-                border: "2px solid rgba(255, 255, 255, 0.2)",
+                ml: 1,
+                width: 40,
+                height: 40,
+                borderRadius: "12px",
+                border: (theme) =>
+                  `2px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  borderColor: (theme) =>
+                    theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)",
+                },
               }}
             >
-              <MatchIcon sx={{ fontSize: 22 }} />
-            </Avatar>
-            {open && (
-              <Typography
-                variant="h5"
-                component="div"
+              <Avatar
                 sx={{
-                  opacity: open ? 1 : 0,
-                  fontWeight: "bold",
-                  color: "primary.main",
-                  background: (theme) =>
-                    `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  transition: theme.transitions.create("opacity", {
-                    easing: theme.transitions.easing.sharp,
-                    duration: theme.transitions.duration.enteringScreen,
-                  }),
+                  width: 32,
+                  height: 32,
+                  backgroundColor: (theme) => theme.palette.primary.main,
+                  color: "#fff",
                 }}
               >
-                FAS
+                {session?.user?.username?.charAt(0).toUpperCase() || "A"}
+              </Avatar>
+            </IconButton>
+          </Tooltip>
+
+          <Menu
+            id="profile-menu"
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            PaperProps={{
+              elevation: 3,
+              sx: {
+                borderRadius: 2,
+                minWidth: 180,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark" ? alpha(theme.palette.background.paper, 0.9) : alpha("#fff", 0.9),
+                backdropFilter: "blur(8px)",
+                overflow: "visible",
+                mt: 1.5,
+                border: (theme) =>
+                  `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+                "& .MuiAvatar-root": {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+              },
+            }}
+            transformOrigin={{ horizontal: "right", vertical: "top" }}
+            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+          >
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {session?.user?.username || "Admin"}
               </Typography>
-            )}
-          </Box>
+              <Typography variant="body2" color="text.secondary">
+                {session?.user?.role === "admin" ? "Quản trị viên" : "Kỹ thuật viên"}
+              </Typography>
+            </Box>
+            <Divider />
+            <MenuItem
+              onClick={handleSignOut}
+              sx={{
+                mx: 1,
+                my: 0.5,
+                borderRadius: 1,
+                "&:hover": {
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark" ? alpha(theme.palette.primary.main, 0.1) : alpha(theme.palette.primary.main, 0.05),
+                },
+              }}
+            >
+              <ListItemIcon>
+                <Logout fontSize="small" />
+              </ListItemIcon>
+              Đăng xuất
+            </MenuItem>
+          </Menu>
         </Toolbar>
-        <Divider sx={{ opacity: 0.5 }} />
-        <List sx={{ p: 1 }}>
+      </MemoizedAppBar>
+
+      <MemoizedDrawer variant="permanent" open={open}>
+        <Toolbar />
+        <Divider />
+        <List
+          sx={{
+            mt: 2,
+            px: 2,
+          }}
+        >
           {menuItems.map((item, index) => (
             <React.Fragment key={item.path || index}>
               <ListItem
                 disablePadding
                 sx={{
                   display: "block",
-                  mb: 0.5,
+                  mb: 1,
                 }}
               >
                 {item.children ? (
@@ -738,24 +450,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       px: 2.5,
                       justifyContent: open ? "initial" : "center",
                       borderRadius: "12px",
-                      position: "relative",
-                      overflow: "hidden",
-                      transition: "all 0.2s",
-                      backgroundColor: "transparent",
+                      backgroundColor:
+                        subMenuOpen[index] || pathname?.startsWith(item.path || "")
+                          ? (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.15 : 0.08)
+                          : "transparent",
                       "&:hover": {
                         backgroundColor: (theme) =>
-                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
-                        transform: "translateY(-2px)",
+                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
                       },
                     }}
                   >
                     <ListItemIcon
                       sx={{
                         minWidth: 0,
-                        mr: open ? 2 : "auto",
+                        mr: open ? 3 : "auto",
                         justifyContent: "center",
-                        color: "text.secondary",
-                        transition: "color 0.2s",
+                        color: "text.primary",
                       }}
                     >
                       {item.icon}
@@ -805,18 +515,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           : "transparent",
                       "&:hover": {
                         backgroundColor: (theme) =>
-                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
-                        transform: "translateY(-2px)",
+                          alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
                       },
                     }}
                   >
                     <ListItemIcon
                       sx={{
                         minWidth: 0,
-                        mr: open ? 2 : "auto",
+                        mr: open ? 3 : "auto",
                         justifyContent: "center",
-                        color: pathname === item.path ? "primary.main" : "text.secondary",
-                        transition: "color 0.2s",
+                        color:
+                          pathname === item.path ? "primary.main" : "text.primary",
                       }}
                     >
                       {item.icon}
@@ -826,7 +535,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       sx={{
                         opacity: open ? 1 : 0,
                         "& .MuiTypography-root": {
-                          fontWeight: pathname === item.path ? 600 : 400,
+                          fontWeight: pathname === item.path ? 500 : 400,
                           color: pathname === item.path ? "primary.main" : "text.primary",
                           transition: "color 0.2s, font-weight 0.2s",
                         },
@@ -835,7 +544,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </ListItemButton>
                 )}
               </ListItem>
-              
+
               {item.children && open && subMenuOpen[index] && (
                 <Box sx={{ pl: 2 }}>
                   {item.children.map((child) => (
@@ -879,18 +588,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                               : "transparent",
                           "&:hover": {
                             backgroundColor: (theme) =>
-                              alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.1 : 0.05),
-                            transform: "translateY(-2px)",
+                              alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.15),
                           },
                         }}
                       >
                         <ListItemIcon
                           sx={{
                             minWidth: 0,
-                            mr: 2,
+                            mr: 3,
                             justifyContent: "center",
-                            color: pathname === child.path ? "primary.main" : "text.secondary",
-                            transition: "color 0.2s",
+                            color:
+                              pathname === child.path ? "primary.main" : "text.primary",
                           }}
                         >
                           {child.icon}
@@ -899,7 +607,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           primary={child.title}
                           sx={{
                             "& .MuiTypography-root": {
-                              fontWeight: pathname === child.path ? 600 : 400,
+                              fontWeight: pathname === child.path ? 500 : 400,
                               color: pathname === child.path ? "primary.main" : "text.primary",
                               transition: "color 0.2s, font-weight 0.2s",
                             },
@@ -913,51 +621,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </React.Fragment>
           ))}
         </List>
-        <Divider sx={{ mt: "auto", opacity: 0.5 }} />
-        {open && (
-          <Box sx={{ p: 2 }}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                borderRadius: "16px",
-                backgroundColor: (theme) => theme.palette.background.paper,
-                color: (theme) => theme.palette.text.primary,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-              }}
-            >
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Cần trợ giúp?
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => window.open("/help", "_blank")}
-                sx={{
-                  borderRadius: "24px",
-                  textTransform: "none",
-                  borderWidth: 1.5,
-                  px: 3,
-                  py: 0.5,
-                  backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.5),
-                  backdropFilter: "blur(4px)",
-                  "&:hover": {
-                    borderWidth: 1.5,
-                    transform: "translateY(-2px)",
-                    boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
-                  },
-                }}
-              >
-                Xem hướng dẫn
-              </Button>
-            </Paper>
-          </Box>
-        )}
-      </Drawer>
+      </MemoizedDrawer>
 
       <Box
         component="main"
@@ -980,7 +644,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </Box>
 
-      <ThemeSettings open={themeSettingsOpen} onClose={handleThemeSettingsClose} />
+      {themeSettingsOpen && <ThemeSettings open={themeSettingsOpen} onClose={handleThemeSettingsClose} />}
     </Box>
   );
 }
+
+export default memo(AdminLayout);
