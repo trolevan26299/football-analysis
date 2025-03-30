@@ -1,75 +1,61 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
-import { getServerAuthSession } from "@/lib/auth";
-
-// Mock data
-const leagues = [
-  {
-    _id: "1",
-    name: "Premier League",
-    country: "Anh",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "2",
-    name: "La Liga",
-    country: "Tây Ban Nha",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "3",
-    name: "Serie A",
-    country: "Ý",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "4",
-    name: "Bundesliga",
-    country: "Đức",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "5",
-    name: "Ligue 1",
-    country: "Pháp",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+import { connectDB } from "@/lib/mongodb";
+import { League } from "@/models/League";
+import { MiddlewareService } from "@/lib/middleware";
 
 export async function GET() {
-  const session = await getServerAuthSession();
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Kết nối database
+    await connectDB();
+
+    // Lấy tất cả giải đấu, sắp xếp theo ngày tạo mới nhất
+    const leagues = await League.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json(leagues);
+  } catch (error) {
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi lấy danh sách giải đấu"
+    );
   }
-
-  return NextResponse.json(leagues);
 }
 
 export async function POST(request: Request) {
-  const session = await getServerAuthSession();
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Kết nối database
+    await connectDB();
+
+    // Lấy dữ liệu từ request
+    const data = await request.json();
+
+    // Tạo giải đấu mới
+    const newLeague = new League({
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Lưu vào database
+    await newLeague.save();
+
+    return MiddlewareService.successResponse("Tạo giải đấu thành công", {
+      league: newLeague
+    });
+  } catch (error) {
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi tạo giải đấu mới"
+    );
   }
-
-  // const data = await request.json();
-  // Add validation and save to database logic here
-
-  return NextResponse.json({ message: "League created successfully" });
 }

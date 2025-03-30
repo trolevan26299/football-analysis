@@ -1,99 +1,44 @@
-import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Match } from "@/models/Match";
-import mongoose from "mongoose";
-import { validateApiKey } from "@/lib/n8n-integration";
+import { MatchService } from "@/lib/api";
+import { MiddlewareService } from "@/lib/middleware";
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Kiểm tra API key bảo mật
-  const apiKey = request.headers.get("x-api-key");
-  if (!validateApiKey(apiKey)) {
-    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
-  }
-
   try {
+    // Kiểm tra API key
+    const apiKey = request.headers.get("x-api-key");
+    const authError = MiddlewareService.verifyApiKey(apiKey);
+    if (authError) return authError;
+
     const { id } = params;
 
-    // Kiểm tra id có hợp lệ không
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "ID trận đấu không hợp lệ" }, { status: 400 });
-    }
-
-    // Đọc dữ liệu từ request
-    const data = await request.json();
-    const { articles, aiAnalysisContent, predictedScore } = data;
-
-    if (!articles || !Array.isArray(articles) || !aiAnalysisContent) {
-      return NextResponse.json(
-        { error: "Dữ liệu không hợp lệ, cần có articles và aiAnalysisContent" },
-        { status: 400 }
+    try {
+      // Đọc dữ liệu từ request
+      const data = await request.json();
+      
+      // Sử dụng MatchService để cập nhật phân tích
+      const match = await MatchService.updateAnalysis(id, data);
+      
+      // Trả về kết quả thành công
+      return MiddlewareService.successResponse(
+        "Cập nhật phân tích thành công",
+        { match: MatchService.formatAnalysisResult(match) }
+      );
+      
+    } catch (error) {
+      // Xử lý lỗi từ service
+      return MiddlewareService.handleError(
+        error,
+        "Lỗi khi cập nhật phân tích trận đấu",
+        400
       );
     }
-
-    // Kết nối đến MongoDB
-    await connectDB();
-
-    // Tìm trận đấu theo id
-    const match = await Match.findById(id);
-
-    if (!match) {
-      return NextResponse.json({ error: "Không tìm thấy trận đấu" }, { status: 404 });
-    }
-
-    // Cập nhật danh sách bài viết
-    match.analysis.articles = articles.map(article => ({
-      title: article.title || "",
-      url: article.url || "",
-      source: article.source || "",
-      content: article.content || "",
-      fetchedAt: new Date()
-    }));
-
-    // Cập nhật bài phân tích AI
-    match.analysis.aiAnalysis.content = aiAnalysisContent;
-    match.analysis.aiAnalysis.generatedAt = new Date();
-    match.analysis.aiAnalysis.status = "generated";
-
-    // Cập nhật dự đoán tỷ số nếu có
-    if (predictedScore && typeof predictedScore === 'object') {
-      if (predictedScore.home !== undefined) {
-        match.analysis.aiAnalysis.predictedScore = {
-          home: predictedScore.home,
-          away: predictedScore.away || 0
-        };
-      }
-    }
-
-    // Cập nhật trạng thái
-    match.analysis.isAnalyzed = true;
-    match.analysis.aiStatus = "generated";
-
-    // Lưu thay đổi
-    await match.save();
-
-    return NextResponse.json({
-      message: "Cập nhật phân tích thành công",
-      match: {
-        _id: match._id,
-        homeTeam: match.homeTeam.name,
-        awayTeam: match.awayTeam.name,
-        analysis: {
-          isAnalyzed: match.analysis.isAnalyzed,
-          aiStatus: match.analysis.aiStatus,
-          aiAnalysis: {
-            status: match.analysis.aiAnalysis.status
-          }
-        }
-      }
-    });
   } catch (error) {
-    console.error("Lỗi khi cập nhật phân tích:", error);
-    return NextResponse.json(
-      { error: "Lỗi khi cập nhật phân tích" },
-      { status: 500 }
+    // Xử lý lỗi chung
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi xử lý yêu cầu cập nhật phân tích"
     );
   }
 } 

@@ -1,144 +1,119 @@
 import { NextResponse } from "next/server";
-import { getServerAuthSession } from "@/lib/auth";
-
-// Mock data - giống dữ liệu trong matches route
-const matches = [
-  {
-    _id: "1",
-    leagueId: "1",
-    homeTeam: {
-      name: "Manchester United",
-      logo: "/logos/mu.png",
-      score: 2,
-    },
-    awayTeam: {
-      name: "Liverpool",
-      logo: "/logos/liverpool.png",
-      score: 1,
-    },
-    matchDate: "2024-03-15T20:00:00Z",
-    kickoffTime: "20:00",
-    venue: {
-      name: "Old Trafford",
-      city: "Manchester",
-    },
-    status: "scheduled",
-    round: "Vòng 28",
-    analysis: {
-      isAnalyzed: false,
-      articles: [],
-      aiAnalysis: {
-        content: "",
-        generatedAt: null,
-        status: "pending",
-      },
-      wordpressPost: {
-        postId: "",
-        status: "draft",
-        publishedAt: null,
-        url: "",
-      },
-    },
-  },
-  {
-    _id: "2",
-    leagueId: "2",
-    homeTeam: {
-      name: "Real Madrid",
-      logo: "/logos/real.png",
-      score: 3,
-    },
-    awayTeam: {
-      name: "Barcelona",
-      logo: "/logos/barca.png",
-      score: 2,
-    },
-    matchDate: "2024-03-16T21:00:00Z",
-    kickoffTime: "21:00",
-    venue: {
-      name: "Santiago Bernabéu",
-      city: "Madrid",
-    },
-    status: "scheduled",
-    round: "Vòng 29",
-    analysis: {
-      isAnalyzed: true,
-      articles: [
-        {
-          title: "El Clásico Preview",
-          url: "https://example.com/article1",
-          source: "Marca",
-        },
-      ],
-      aiAnalysis: {
-        content: "Phân tích trận đấu...",
-        generatedAt: "2024-03-14T10:00:00Z",
-        status: "generated",
-      },
-      wordpressPost: {
-        postId: "123",
-        status: "published",
-        publishedAt: "2024-03-14T11:00:00Z",
-        url: "https://example.com/post/123",
-      },
-    },
-  },
-];
+import { connectDB } from "@/lib/mongodb";
+import { Match } from "@/models/Match";
+import { MiddlewareService } from "@/lib/middleware";
+import mongoose from "mongoose";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID trận đấu không hợp lệ" }, { status: 400 });
+    }
+
+    // Kết nối database
+    await connectDB();
+
+    // Tìm trận đấu theo ID
+    const match = await Match.findById(id)
+      .populate("leagueId", "name country season")
+      .lean();
+
+    if (!match) {
+      return NextResponse.json({ error: "Không tìm thấy trận đấu" }, { status: 404 });
+    }
+
+    return NextResponse.json(match);
+  } catch (error) {
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi lấy thông tin trận đấu"
+    );
   }
-
-  const { id } = params;
-  const match = matches.find((m) => m._id === id);
-
-  if (!match) {
-    return NextResponse.json({ error: "Match not found" }, { status: 404 });
-  }
-
-  return NextResponse.json(match);
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
+
     const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID trận đấu không hợp lệ" }, { status: 400 });
+    }
+
+    // Kết nối database
+    await connectDB();
+    
+    // Lấy dữ liệu từ request
     const data = await request.json();
-
-    // Trong thực tế, đây sẽ là logic cập nhật trong database
-    console.log(`Updating match with id ${id}:`, data);
-
-    return NextResponse.json({ message: "Match updated successfully" });
+    
+    // Cập nhật thời gian
+    data.updatedAt = new Date();
+    
+    // Cập nhật trận đấu
+    const updatedMatch = await Match.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedMatch) {
+      return NextResponse.json({ error: "Không tìm thấy trận đấu" }, { status: 404 });
+    }
+    
+    return MiddlewareService.successResponse(
+      "Cập nhật trận đấu thành công",
+      { match: updatedMatch }
+    );
   } catch (error) {
-    console.error("Error updating match:", error);
-    return NextResponse.json({ error: "Failed to update match" }, { status: 500 });
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi cập nhật trận đấu"
+    );
   }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
+
     const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID trận đấu không hợp lệ" }, { status: 400 });
+    }
 
-    // Trong thực tế, đây sẽ là logic xóa trong database
-    console.log(`Deleting match with id ${id}`);
-
-    return NextResponse.json({ message: "Match deleted successfully" });
+    // Kết nối database
+    await connectDB();
+    
+    // Xóa trận đấu
+    const deletedMatch = await Match.findByIdAndDelete(id);
+    
+    if (!deletedMatch) {
+      return NextResponse.json({ error: "Không tìm thấy trận đấu" }, { status: 404 });
+    }
+    
+    return MiddlewareService.successResponse(
+      "Xóa trận đấu thành công",
+      { matchId: id }
+    );
   } catch (error) {
-    console.error("Error deleting match:", error);
-    return NextResponse.json({ error: "Failed to delete match" }, { status: 500 });
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi xóa trận đấu"
+    );
   }
 }

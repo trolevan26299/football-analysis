@@ -9,8 +9,5 @@ export default async function Layout({ children }: { children: React.ReactNode }
     redirect("/auth/signin");
   }
 
-  // Người dùng bình thường vẫn có thể xem bài viết phân tích
-  // nên chúng ta không kiểm tra role như trong admin/layout.tsx
-
   return <AdminLayout>{children}</AdminLayout>;
 } 

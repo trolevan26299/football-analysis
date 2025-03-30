@@ -1,109 +1,128 @@
 import { NextResponse } from "next/server";
-import { getServerAuthSession } from "@/lib/auth";
-
-// Mock data
-const leagues = [
-  {
-    _id: "1",
-    name: "Premier League",
-    country: "Anh",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "2",
-    name: "La Liga",
-    country: "Tây Ban Nha",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "3",
-    name: "Serie A",
-    country: "Ý",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "4",
-    name: "Bundesliga",
-    country: "Đức",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "5",
-    name: "Ligue 1",
-    country: "Pháp",
-    season: "2023-2024",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+import { connectDB } from "@/lib/mongodb";
+import { League } from "@/models/League";
+import { MiddlewareService } from "@/lib/middleware";
+import mongoose from "mongoose";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID giải đấu không hợp lệ" }, { status: 400 });
+    }
+
+    // Kết nối database
+    await connectDB();
+
+    // Tìm giải đấu theo ID
+    const league = await League.findById(id).lean();
+
+    if (!league) {
+      return NextResponse.json({ error: "Không tìm thấy giải đấu" }, { status: 404 });
+    }
+
+    return NextResponse.json(league);
+  } catch (error) {
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi lấy thông tin giải đấu"
+    );
   }
-
-  const { id } = params;
-  const league = leagues.find((l) => l._id === id);
-
-  if (!league) {
-    return NextResponse.json({ error: "League not found" }, { status: 404 });
-  }
-
-  return NextResponse.json(league);
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
+
     const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID giải đấu không hợp lệ" }, { status: 400 });
+    }
+
+    // Kết nối database
+    await connectDB();
+    
+    // Lấy dữ liệu từ request
     const data = await request.json();
-
-    // Trong thực tế, đây sẽ là logic cập nhật trong database
-    console.log(`Updating league with id ${id}:`, data);
-
-    return NextResponse.json({ message: "League updated successfully" });
+    
+    // Cập nhật thời gian
+    data.updatedAt = new Date();
+    
+    // Cập nhật giải đấu
+    const updatedLeague = await League.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedLeague) {
+      return NextResponse.json({ error: "Không tìm thấy giải đấu" }, { status: 404 });
+    }
+    
+    return MiddlewareService.successResponse(
+      "Cập nhật giải đấu thành công",
+      { league: updatedLeague }
+    );
   } catch (error) {
-    console.error("Error updating league:", error);
-    return NextResponse.json({ error: "Failed to update league" }, { status: 500 });
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi cập nhật giải đấu"
+    );
   }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
+
     const { id } = params;
+    
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID giải đấu không hợp lệ" }, { status: 400 });
+    }
 
-    // Trong thực tế, đây sẽ là logic xóa trong database
-    console.log(`Deleting league with id ${id}`);
-
-    return NextResponse.json({ message: "League deleted successfully" });
+    // Kết nối database
+    await connectDB();
+    
+    // Kiểm tra xem có trận đấu nào sử dụng giải đấu này không
+    const Match = mongoose.model("Match");
+    const matchCount = await Match.countDocuments({ leagueId: id });
+    
+    if (matchCount > 0) {
+      return NextResponse.json(
+        { error: `Không thể xóa giải đấu này vì có ${matchCount} trận đấu đang sử dụng` },
+        { status: 400 }
+      );
+    }
+    
+    // Xóa giải đấu
+    const deletedLeague = await League.findByIdAndDelete(id);
+    
+    if (!deletedLeague) {
+      return NextResponse.json({ error: "Không tìm thấy giải đấu" }, { status: 404 });
+    }
+    
+    return MiddlewareService.successResponse(
+      "Xóa giải đấu thành công",
+      { leagueId: id }
+    );
   } catch (error) {
-    console.error("Error deleting league:", error);
-    return NextResponse.json({ error: "Failed to delete league" }, { status: 500 });
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi xóa giải đấu"
+    );
   }
 }

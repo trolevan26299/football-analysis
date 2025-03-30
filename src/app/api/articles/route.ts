@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Article } from "@/models/Article";
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
     const total = await Article.countDocuments(query);
 
     // Tạo options cho việc sắp xếp
-    let sortOptions: any = {};
+    const sortOptions: any = {};
     if (sortBy === "matchDate") {
       sortOptions["matchInfo.matchDate"] = sortOrder === "asc" ? 1 : -1;
     } else if (sortBy === "createdAt") {

@@ -1,58 +1,80 @@
 import { NextResponse } from "next/server";
-import { getServerAuthSession } from "@/lib/auth";
-
-// Mock data
-const users = [
-  {
-    _id: "1",
-    username: "admin",
-    role: "admin",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "2",
-    username: "ktv1",
-    role: "ktv",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    _id: "3",
-    username: "ktv2",
-    role: "ktv",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+import { connectDB } from "@/lib/mongodb";
+import { User } from "@/models/User";
+import { MiddlewareService } from "@/lib/middleware";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
-  const session = await getServerAuthSession();
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Kết nối database
+    await connectDB();
+
+    // Lấy tất cả users, sắp xếp theo ngày tạo mới nhất và loại bỏ trường password
+    const users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json(users);
+  } catch (error) {
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi lấy danh sách người dùng"
+    );
   }
-
-  // Trả về danh sách users nhưng loại bỏ trường password
-  return NextResponse.json(users);
 }
 
 export async function POST(request: Request) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-    // Trong thực tế, ở đây sẽ xử lý việc tạo user mới
-    console.log("Creating new user:", body);
+    // Kết nối database
+    await connectDB();
 
-    return NextResponse.json({ message: "User created successfully" });
+    // Lấy dữ liệu từ request
+    const data = await request.json();
+    
+    // Kiểm tra username đã tồn tại chưa
+    const existingUser = await User.findOne({ username: data.username });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "Username đã tồn tại" },
+        { status: 400 }
+      );
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    
+    // Tạo user mới
+    const newUser = new User({
+      username: data.username,
+      password: hashedPassword,
+      role: data.role || "ktv", // Mặc định là ktv nếu không chỉ định
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Lưu vào database
+    await newUser.save();
+    
+    // Trả về user đã tạo nhưng loại bỏ password
+    const userResponse = newUser.toObject();
+    delete userResponse.password;
+
+    return MiddlewareService.successResponse("Tạo người dùng thành công", {
+      user: userResponse
+    });
   } catch (error) {
-    console.error("Error creating user:", error);
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+    return MiddlewareService.handleError(
+      error,
+      "Lỗi khi tạo người dùng mới"
+    );
   }
 }

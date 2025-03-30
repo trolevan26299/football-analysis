@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import config from "@/config";
 
 // Định nghĩa kiểu cho mongoose cache
 interface MongooseCache {
@@ -12,10 +13,10 @@ declare global {
   var mongoose: MongooseCache | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = config.db.uri;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
+  throw new Error("Vui lòng cấu hình MONGODB_URI trong file .env");
 }
 
 const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
@@ -33,9 +34,11 @@ export async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      dbName: config.db.dbName,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI as string, opts).then((mongoose) => {
+      console.log(`MongoDB connected to ${config.db.dbName} [${config.app.environment}]`);
       return mongoose;
     });
   }
@@ -44,6 +47,7 @@ export async function connectDB() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error(`MongoDB connection error: ${e}`);
     throw e;
   }
 
