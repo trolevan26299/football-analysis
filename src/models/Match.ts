@@ -11,44 +11,31 @@ const matchSchema = new mongoose.Schema({
   // Thông tin đội bóng
   homeTeam: {
     name: { type: String, required: true },
-    logo: { type: String },
+    logo: { type: String, default: "" },
     score: { type: Number, default: 0 },
   },
   awayTeam: {
     name: { type: String, required: true },
-    logo: { type: String },
+    logo: { type: String, default: "" },
     score: { type: Number, default: 0 },
   },
 
   // Thời gian trận đấu
   matchDate: { type: Date, required: true },
-  kickoffTime: { type: String, required: true }, // Format: "HH:mm"
-
-  // Địa điểm
-  venue: {
-    name: { type: String },
-    city: { type: String },
-  },
-
+  
   // Trạng thái trận đấu
-  status: { type: String, required: true },
-
-  // Thông tin vòng đấu
-  round: {
-    type: String,
-    required: true,
+  status: { 
+    type: String, 
+    enum: ["scheduled", "finished"],
+    default: "scheduled"
   },
 
-  // Thông tin tham chiếu đến bài phân tích
+  // Thông tin phân tích đơn giản hóa
   analysisInfo: {
-    hasArticle: { type: Boolean, default: false },
-    articleId: { 
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Article" 
-    },
+    isAnalyzed: { type: Boolean, default: false },
     analysisStatus: { 
       type: String, 
-      enum: ["not_analyzed", "in_progress", "completed"],
+      enum: ["not_analyzed", "analyzed"],
       default: "not_analyzed"
     }
   },
@@ -81,15 +68,34 @@ matchSchema.pre("save", function (next) {
 // Tạo các indexes để tối ưu truy vấn
 matchSchema.index({ leagueId: 1, matchDate: 1 });
 matchSchema.index({ status: 1 });
-matchSchema.index({ "analysisInfo.hasArticle": 1 });
+matchSchema.index({ "analysisInfo.isAnalyzed": 1 });
 matchSchema.index({ "analysisInfo.analysisStatus": 1 });
 
-// Virtual field để lấy trạng thái phân tích
-matchSchema.virtual("analysisStatusText").get(function () {
-  if (!this?.analysisInfo?.hasArticle) return "Chưa phân tích";
-  if (this?.analysisInfo?.analysisStatus === "completed") return "Đã phân tích";
-  if (this?.analysisInfo?.analysisStatus === "in_progress") return "Đang xử lý";
-  return "Chưa phân tích";
+// Thêm middleware để kiểm tra nếu trận đấu đã diễn ra
+matchSchema.pre("save", function(next) {
+  const currentDate = new Date();
+  const matchDate = new Date(this.matchDate);
+  
+  // Lấy chỉ ngày, bỏ qua giờ phút giây để so sánh chính xác
+  const matchDateOnly = new Date(Date.UTC(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate()));
+  const currentDateOnly = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
+  
+  // Nếu ngày thi đấu ở quá khứ (nhỏ hơn ngày hiện tại) và trạng thái vẫn là "scheduled", 
+  // thì tự động cập nhật thành "finished"
+  if (matchDateOnly < currentDateOnly && this.status === "scheduled") {
+    console.log(`Automatically changing match status to "finished" as date ${matchDateOnly} is in the past compared to ${currentDateOnly}`);
+    this.status = "finished";
+  }
+  
+  // Ngược lại, nếu ngày thi đấu ở tương lai/hiện tại và trạng thái đã được cập nhật tự động thành finished,
+  // thì cần đổi lại thành scheduled (nhưng chỉ khi không có sự thay đổi trực tiếp trong request)
+  // Trường hợp này xảy ra khi admin cập nhật ngày của trận đấu đã diễn ra thành ngày trong tương lai
+  if (matchDateOnly >= currentDateOnly && this.status === "finished" && !this.isModified('status')) {
+    console.log(`Changing match status back to "scheduled" as date ${matchDateOnly} is now in the future/today`);
+    this.status = "scheduled";
+  }
+  
+  next();
 });
 
 export const Match = mongoose.models.Match || mongoose.model("Match", matchSchema); 

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import ClientProviders from "@/components/ClientProviders";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ReduxProvider } from '@/redux/Provider';
 
 // Định nghĩa font chính sử dụng trong ứng dụng
 const inter = Inter({ 
@@ -26,7 +27,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="vi" className="light-theme">
       <body className={inter.className}>
-        <ClientProviders session={session}>{children}</ClientProviders>
+        <ReduxProvider>
+          <ClientProviders session={session}>
+            {children}
+          </ClientProviders>
+        </ReduxProvider>
       </body>
     </html>
   );

@@ -5,7 +5,7 @@ import config from "@/config";
 export const MiddlewareService = {
  
  // Xác thực người dùng dựa trên vai trò
-  async verifyUserRole(requiredRoles: string[] = ["admin"]) {
+  async verifyUserRole(requiredRoles: string[] = ["admin"], req?: Request) {
     const session = await getServerAuthSession();
     
     if (!session || !session.user) {
@@ -15,6 +15,43 @@ export const MiddlewareService = {
       );
     }
     
+    // Nếu là admin, luôn cho phép truy cập
+    if (session.user.role === "admin") {
+      return undefined;
+    }
+    
+    // Kiểm tra nếu người dùng là ktv
+    if (session.user.role === "ktv") {
+      // Kiểm tra URL hiện tại nếu có req
+      if (req) {
+        const url = new URL(req.url);
+        
+        // Các pattern URL mà KTV không được phép truy cập
+        const restrictedPatterns = [
+          '/api/users',
+          '/api/admin/users',
+          '/admin/users'
+        ];
+        
+        // Kiểm tra nếu URL chứa bất kỳ pattern cấm nào
+        const isRestricted = restrictedPatterns.some(pattern => 
+          url.pathname.includes(pattern)
+        );
+        
+        if (isRestricted) {
+          console.log(`KTV không có quyền truy cập: ${url.pathname}`);
+          return NextResponse.json(
+            { error: "KTV không có quyền quản lý người dùng" },
+            { status: 403 }
+          );
+        }
+      }
+      
+      // Nếu không phải URL bị giới hạn, cho phép KTV truy cập
+      return undefined;
+    }
+    
+    // Các vai trò khác phải nằm trong danh sách requiredRoles
     if (!requiredRoles.includes(session.user.role)) {
       return NextResponse.json(
         { error: `Không có quyền truy cập, cần quyền ${requiredRoles.join(' hoặc ')}` },

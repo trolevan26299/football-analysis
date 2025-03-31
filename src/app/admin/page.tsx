@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useEffect, useState, useCallback } from "react";
+import React, { memo, useEffect } from "react";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { Box, Grid } from "@mui/material";
@@ -11,85 +11,63 @@ import DataTabs from "@/components/admin/dashboard/DataTabs";
 import LeagueStatsCard from "@/components/admin/dashboard/cards/LeagueStatsCard";
 import QuickActionsCard from "@/components/admin/dashboard/cards/QuickActionsCard";
 
-interface DashboardStats {
-  totalMatches: number;
-  pendingAnalysis: number;
-  totalArticles: number;
-  totalUsers: number;
-  totalLeagues: number;
-  activeLeagues: number;
-  recentMatches: Array<{
-    id: string;
-    homeTeam: string;
-    awayTeam: string;
-    date: string;
-    status: string;
-  }>;
-  recentArticles: Array<{
-    id: string;
-    title: string;
-    status: string;
-    createdAt: string;
-  }>;
-}
+// Import Redux hooks
+import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
+import { fetchDashboardData, clearDashboardError } from "@/redux/slices/dashboardSlice";
 
 const AdminDashboard = memo(function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch("/api/dashboard");
-      if (!response.ok) throw new Error("Không thể tải dữ liệu dashboard");
-      const data = await response.json();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  const dispatch = useAppDispatch();
+  const { data: stats, loading, error } = useAppSelector((state) => state.dashboard);
+  
+  const fetchData = () => {
+    dispatch(fetchDashboardData());
+  };
+  
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchData();
+  }, []);
+  
+  const handleDismissError = () => {
+    dispatch(clearDashboardError());
+  };
 
   if (loading) {
     return <LoadingSpinner variant="overlay" message="Đang tải dữ liệu..." />;
   }
 
   if (error) {
-    return <ErrorAlert message={error} severity="error" variant="toast" onClose={() => setError(null)} />;
+    return <ErrorAlert message={error} severity="error" variant="toast" onClose={handleDismissError} />;
+  }
+
+  if (!stats) {
+    return <Box>Không có dữ liệu</Box>;
   }
 
   return (
     <Box>
       {/* Header */}
-      <DashboardHeader onRefresh={fetchDashboardData} />
+      <DashboardHeader onRefresh={fetchData} />
 
       {/* Stats Cards */}
       <StatsSection
-        totalMatches={stats?.totalMatches || 0}
-        pendingAnalysis={stats?.pendingAnalysis || 0}
-        totalArticles={stats?.totalArticles || 0}
-        totalUsers={stats?.totalUsers || 0}
+        totalMatches={stats.totalMatches || 0}
+        pendingAnalysis={stats.pendingAnalysis || 0}
+        totalArticles={stats.totalArticles || 0}
+        totalUsers={stats.totalUsers || 0}
       />
 
       {/* Recent data tabs */}
       <DataTabs
-        matches={stats?.recentMatches || []}
-        articles={stats?.recentArticles || []}
+        matches={stats.recentMatches || []}
+        articles={stats.recentArticles || []}
       />
 
       {/* Additional stats */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <LeagueStatsCard
-            totalLeagues={stats?.totalLeagues || 0}
-            activeLeagues={stats?.activeLeagues || 0}
+            totalLeagues={stats.totalLeagues || 0}
+            activeLeagues={stats.activeLeagues || 0}
           />
         </Grid>
 

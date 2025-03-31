@@ -6,7 +6,7 @@ import { League } from "@/models/League";
 
 
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerAuthSession();
 
   if (!session) {
@@ -14,14 +14,24 @@ export async function GET() {
   }
 
   try {
+    // Lấy các tham số từ URL
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+
     // Kết nối MongoDB
     console.log("Attempting to connect to MongoDB...");
     await connectDB();
     console.log("MongoDB connection successful");
 
-    // Lấy danh sách giải đấu từ cơ sở dữ liệu
-    console.log("Fetching leagues from database...");
-    const leagues = await League.find().sort({ createdAt: -1 }).lean();
+    // Xây dựng query dựa trên các tham số
+    const query: Record<string, string> = {};
+    if (status) {
+      query.status = status;
+    }
+
+    // Lấy danh sách giải đấu từ cơ sở dữ liệu với query
+    console.log("Fetching leagues from database with query:", query);
+    const leagues = await League.find(query).sort({ createdAt: -1 }).lean();
     console.log("Leagues fetched:", leagues.length);
 
     return NextResponse.json(leagues);

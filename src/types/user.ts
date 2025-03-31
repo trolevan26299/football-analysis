@@ -3,7 +3,6 @@ import { ReactNode } from "react";
 export interface User {
   id: string;
   username: string;
-  email: string;
   role: UserRole;
   status: UserStatus;
   createdAt: string;
@@ -11,7 +10,7 @@ export interface User {
   avatar?: string;
 }
 
-export type UserRole = "admin" | "editor" | "analyst" | "viewer";
+export type UserRole = "admin" | "ktv";
 export type UserStatus = "active" | "inactive" | "pending" | "blocked";
 
 export interface UserProfileProps {
@@ -22,7 +21,6 @@ export interface UserProfileProps {
 export interface UserListItem {
   id: string;
   username: string;
-  email: string;
   role: UserRole;
   status: UserStatus;
   createdAt: string;
@@ -38,7 +36,6 @@ export interface UserTableProps {
 
 export interface UserFormValues {
   username: string;
-  email: string;
   password?: string;
   role: UserRole;
   status: UserStatus;

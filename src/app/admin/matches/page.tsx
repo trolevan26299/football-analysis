@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -33,7 +34,7 @@ import {
   alpha,
 } from "@mui/material";
 
-import { vi } from "date-fns/locale";
+import vi from 'date-fns/locale/vi';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -45,239 +46,192 @@ import {
 } from "@mui/icons-material";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import StatusChip from "@/components/ui/StatusChip";
 import PageTitle from "@/components/ui/PageTitle";
 
-interface Match {
-  _id: string;
-  leagueId: string;
-  homeTeam: {
-    name: string;
-    logo: string;
-    score: number;
-  };
-  awayTeam: {
-    name: string;
-    logo: string;
-    score: number;
-  };
-  matchDate: string;
-  kickoffTime: string;
-  venue: {
-    name: string;
-    city: string;
-  };
-  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
-  round: string;
-  analysis: {
-    isAnalyzed: boolean;
-    aiStatus: "not_generated" | "processing" | "generated";
-    articles: Array<{
-      title: string;
-      url: string;
-      source: string;
-    }>;
-    aiAnalysis: {
-      content: string;
-      generatedAt: string;
-      status: "pending" | "generating" | "generated" | "failed";
-    };
-    wordpressPost: {
-      postId: string;
-      status: "draft" | "published" | "failed";
-      publishedAt: string;
-      url: string;
-    };
-  };
-}
+// Import RTK Query hooks
+import {
+  useGetMatchesQuery,
+  useGetLeaguesQuery,
+  useCreateMatchMutation,
+  useUpdateMatchMutation,
+  useDeleteMatchMutation,
+} from "@/redux/services/rtk-query";
 
-interface League {
-  _id: string;
-  name: string;
-  country: string;
-  status: "active" | "inactive";
-}
+// Import types
+import { Match } from "@/types";
 
 interface MatchFormData {
   leagueId: string;
   homeTeamName: string;
   awayTeamName: string;
-  matchDate: Date;
-  kickoffTime: string;
-  venueName: string;
-  venueCity: string;
-  round: string;
-  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
+  matchDate: Date | string;
 }
+
+// Status labels - Đơn giản hóa chỉ còn 2 trạng thái
+const statusLabels: { [key: string]: string } = {
+  scheduled: "Chưa diễn ra",
+  finished: "Đã diễn ra"
+};
 
 const initialFormData: MatchFormData = {
   leagueId: "",
   homeTeamName: "",
   awayTeamName: "",
-  matchDate: new Date(),
-  kickoffTime: "00:00",
-  venueName: "",
-  venueCity: "",
-  round: "",
-  status: "scheduled",
-};
-
-
-const statusLabels = {
-  scheduled: "Lên lịch",
-  live: "Đang diễn ra",
-  finished: "Kết thúc",
-  postponed: "Hoãn",
-  cancelled: "Hủy",
+  matchDate: new Date().toISOString(),
 };
 
 export default function MatchesPage() {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [formData, setFormData] = useState<MatchFormData>(initialFormData);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Trạng thái local
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterLeague, setFilterLeague] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
-  const [openAnalysisDialog, setOpenAnalysisDialog] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("scheduled");
+  const [openDialog, setOpenDialog] = useState(false);
+  const [formData, setFormData] = useState<MatchFormData>(initialFormData);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    matchId: string;
-    title: string;
-    message: string;
-  }>({
-    open: false,
-    matchId: "",
-    title: "",
-    message: "",
-  });
-  const [analyzeLoading, setAnalyzeLoading] = useState(false);
-  const [analyzeDialog, setAnalyzeDialog] = useState<{
-    open: boolean;
-    matchId: string;
-    matchName: string;
-  }>({
-    open: false,
-    matchId: "",
-    matchName: "",
-  });
+  const [openAnalyzeDialog, setOpenAnalyzeDialog] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [openAnalysis, setOpenAnalysis] = useState(false);
+  const [analysisMatch, setAnalysisMatch] = useState<Match | null>(null);
 
-  // Fetch data
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [matchesRes, leaguesRes] = await Promise.all([fetch("/api/matches"), fetch("/api/leagues")]);
-
-      if (!matchesRes.ok || !leaguesRes.ok) {
-        throw new Error("Không thể tải dữ liệu");
-      }
-
-      const [matchesData, leaguesData] = await Promise.all([matchesRes.json(), leaguesRes.json()]);
-
-      setMatches(matchesData);
-      setLeagues(leaguesData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Debounce effect cho tìm kiếm
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timerId = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timerId);
+  }, [searchTerm]);
+
+  // RTK Query hooks
+  const { 
+    data = { 
+      matches: [], 
+      pagination: { total: 0, page: 1, limit: 10, totalPages: 1 } 
+    }, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useGetMatchesQuery(
+    { 
+      page: page + 1, // API dùng page bắt đầu từ 1
+      limit: rowsPerPage, 
+      search: debouncedSearchTerm,
+      leagueId: filterLeague || undefined,
+      status: filterStatus || undefined
+    }
+  );
+
+
+  const { data: leagues = [] } = useGetLeaguesQuery({ status: 'active' });
+
+  const [createMatch, { isLoading: isCreating }] = useCreateMatchMutation();
+  const [updateMatch, { isLoading: isUpdating }] = useUpdateMatchMutation();
+  const [deleteMatch, { isLoading: isDeleting }] = useDeleteMatchMutation();
+
+  // Tính toán loading
+  const loading = isLoading || isCreating || isUpdating || isDeleting;
+  
+  // Kết hợp lỗi
+  const errorMessage = error ? 'Đã xảy ra lỗi khi làm việc với dữ liệu trận đấu' : null;
 
   // Handle form submission
   const handleSubmit = async () => {
-    // Kiểm tra dữ liệu đầu vào
+    // Kiểm tra dữ liệu đầu vào - chỉ các trường bắt buộc
     if (!formData.leagueId || !formData.homeTeamName || !formData.awayTeamName || !formData.matchDate) {
-      setError("Vui lòng điền đầy đủ thông tin bắt buộc");
+      // Hiển thị thông báo lỗi
+      setSuccess("Vui lòng nhập đầy đủ thông tin bắt buộc");
       return;
     }
 
     try {
-      setLoading(true);
-      const url = editingId ? `/api/matches/${editingId}` : "/api/matches";
-      const method = editingId ? "PUT" : "POST";
-
-      // Chuyển đổi dữ liệu form để gửi lên API
-      const requestData = {
-        ...formData,
-        matchDate: formData.matchDate.toISOString(), // Chuyển đổi Date thành string
-      };
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestData),
+      // Đảm bảo matchDate luôn là string
+      const matchDateString = typeof formData.matchDate === 'string' 
+        ? formData.matchDate 
+        : formData.matchDate.toISOString();
+      
+      // Kiểm tra ngày thi đấu để xác định trạng thái
+      const matchDate = new Date(matchDateString);
+      const currentDate = new Date();
+      
+      // Lấy chỉ ngày, bỏ qua giờ phút giây để so sánh chính xác
+      // Sử dụng UTC để tránh vấn đề múi giờ
+      const matchDateOnly = new Date(Date.UTC(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate()));
+      const currentDateOnly = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
+      
+      console.log('DEBUG - Dates:', {
+        matchDate,
+        currentDate,
+        matchDateOnly,
+        currentDateOnly,
+        comparison: matchDateOnly > currentDateOnly ? 'Match is in future' : 'Match is past or today'
       });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể lưu trận đấu");
+      
+      // Xác định trạng thái dựa trên ngày thi đấu
+      // Nếu ngày trận đấu >= ngày hiện tại thì là "scheduled" (chưa diễn ra)
+      const matchStatus = matchDateOnly >= currentDateOnly ? "scheduled" : "finished";
+      
+      // Đơn giản hoá dữ liệu
+      const matchData = {
+        leagueId: formData.leagueId,
+        homeTeamName: formData.homeTeamName,
+        awayTeamName: formData.awayTeamName,
+        matchDate: matchDateString,
+        status: matchStatus, // Thêm trạng thái
+      };
+      
+      console.log('DEBUG - Sending match data with status:', matchStatus);
+      
+      if (editingId) {
+        await updateMatch({
+          id: editingId,
+          ...matchData
+        }).unwrap();
+        setSuccess("Cập nhật trận đấu thành công");
+      } else {
+        await createMatch(matchData).unwrap();
+        setSuccess("Thêm trận đấu mới thành công");
       }
-
-      // Hiển thị thông báo thành công
-      setSuccess(editingId ? "Cập nhật trận đấu thành công" : "Thêm trận đấu mới thành công");
-
-      // Đóng dialog và làm mới dữ liệu
+      
       setOpenDialog(false);
-      await fetchData();
+      setFormData(initialFormData);
+      refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      console.error("Failed to save match:", err);
+      setSuccess("Có lỗi xảy ra khi lưu trận đấu");
     }
   };
 
   // Handle delete
   const handleDeleteClick = (matchId: string) => {
-    setConfirmDialog({
-      open: true,
-      matchId: matchId,
-      title: "Xác nhận xóa",
-      message: "Bạn có chắc chắn muốn xóa trận đấu này?",
-    });
+    setOpenConfirmDialog(true);
+    setDeleteId(matchId);
   };
 
   const handleConfirmDelete = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`/api/matches/${confirmDialog.matchId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Không thể xóa trận đấu");
-      }
-
-      // Cập nhật dữ liệu
-      setMatches(matches.filter((match) => match._id !== confirmDialog.matchId));
+      await deleteMatch(deleteId as string).unwrap();
       setSuccess("Xóa trận đấu thành công");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      console.error("Failed to delete match:", err);
     } finally {
-      setLoading(false);
       // Đóng dialog xác nhận
-      setConfirmDialog({ ...confirmDialog, open: false });
+      setOpenConfirmDialog(false);
     }
   };
 
   const handleCancelDelete = () => {
-    setConfirmDialog({ ...confirmDialog, open: false });
+    setOpenConfirmDialog(false);
   };
 
   const handleDelete = (id: string) => {
@@ -287,71 +241,73 @@ export default function MatchesPage() {
   // Handle analysis
   const handleOpenAnalysis = (match: Match) => {
     setSelectedMatch(match);
-    setOpenAnalysisDialog(true);
+    setOpenAnalysis(true);
   };
-
-  // Filter matches
-  const filteredMatches = matches.filter((match) => {
-    const matchesSearch =
-      match.homeTeam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.awayTeam.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesLeague = filterLeague ? match.leagueId === filterLeague : true;
-    const matchesStatus = filterStatus ? match.status === filterStatus : true;
-
-    return matchesSearch && matchesLeague && matchesStatus;
-  });
 
   // Hàm mở dialog xác nhận phân tích
   const handleOpenAnalyzeDialog = (match: Match) => {
-    setAnalyzeDialog({
-      open: true,
-      matchId: match._id,
-      matchName: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
-    });
+    setAnalysisMatch(match);
+    setOpenAnalyzeDialog(true);
   };
 
   // Hàm đóng dialog phân tích
   const handleCloseAnalyzeDialog = () => {
-    setAnalyzeDialog({
-      ...analyzeDialog,
-      open: false,
-    });
+    setOpenAnalyzeDialog(false);
   };
 
   // Hàm thực hiện phân tích
   const handleAnalyze = async () => {
+    if (!analysisMatch) return;
+
     try {
-      setAnalyzeLoading(true);
-      const response = await fetch(`/api/matches/${analyzeDialog.matchId}/analyze`, {
+      const response = await fetch(`/api/matches/${analysisMatch._id}/analyze`, {
         method: "POST",
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        setSuccess("Bắt đầu phân tích trận đấu thành công");
+      } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Lỗi khi phân tích trận đấu");
+        setSuccess(errorData.error || "Lỗi khi phân tích trận đấu");
       }
 
-      // Hiển thị thông báo thành công
-      setSuccess("Bắt đầu quá trình phân tích trận đấu thành công");
-      
       // Đóng dialog và làm mới dữ liệu
       handleCloseAnalyzeDialog();
-      await fetchData();
+      refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setAnalyzeLoading(false);
+      console.error("Failed to analyze match:", err);
+      setSuccess("Có lỗi xảy ra khi phân tích trận đấu");
     }
   };
 
-  if (loading) {
+  // Xử lý phân trang từ API
+  useEffect(() => {
+    // Khi nhận được dữ liệu mới từ API, reset page nếu cần
+    if (data && page >= data.pagination.totalPages) {
+      setPage(Math.max(0, data.pagination.totalPages - 1));
+    }
+  }, [data, page]);
+
+  // Tự động refetch khi filter thay đổi
+  useEffect(() => {
+    console.log('Filter changed, refetching data:', { 
+      search: debouncedSearchTerm, 
+      leagueId: filterLeague, 
+      status: filterStatus 
+    });
+    
+    refetch();
+    // Reset về trang đầu tiên khi thay đổi filter
+    setPage(0);
+  }, [debouncedSearchTerm, filterLeague, filterStatus, refetch]);
+
+  if (loading && !data.matches.length) {
     return <LoadingSpinner variant="overlay" message="Đang tải dữ liệu..." />;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      {error && <ErrorAlert message={error} severity="error" variant="toast" onClose={() => setError(null)} />}
+      {errorMessage && <ErrorAlert message={errorMessage} severity="error" variant="toast" onClose={() => null} />}
       {success && <ErrorAlert message={success} severity="success" variant="toast" onClose={() => setSuccess(null)} />}
 
       {/* Header */}
@@ -431,11 +387,8 @@ export default function MatchesPage() {
               <InputLabel>Trạng thái</InputLabel>
               <Select value={filterStatus} label="Trạng thái" onChange={(e) => setFilterStatus(e.target.value)}>
                 <MenuItem value="">Tất cả</MenuItem>
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>
-                    {label}
-                  </MenuItem>
-                ))}
+                <MenuItem value="scheduled">Chưa diễn ra</MenuItem>
+                <MenuItem value="finished">Đã diễn ra</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -443,7 +396,7 @@ export default function MatchesPage() {
             <Button
               fullWidth
               startIcon={<RefreshIcon />}
-              onClick={fetchData}
+              onClick={() => refetch()}
               variant="outlined"
               sx={{
                 py: 0.9,
@@ -474,7 +427,6 @@ export default function MatchesPage() {
               <TableCell sx={{ fontWeight: 600 }}>Giải đấu</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Trận đấu</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Sân</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Phân tích</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>
@@ -483,7 +435,7 @@ export default function MatchesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredMatches.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((match) => (
+            {data.matches.map((match: Match) => (
               <TableRow
                 key={match._id}
                 sx={{
@@ -494,7 +446,7 @@ export default function MatchesPage() {
                   },
                 }}
               >
-                <TableCell>{leagues.find((l) => l._id === match.leagueId)?.name}</TableCell>
+                <TableCell>{match.leagueId?.name}</TableCell>
                 <TableCell sx={{ fontWeight: 500 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {match.homeTeam.name} vs {match.awayTeam.name}
@@ -502,25 +454,14 @@ export default function MatchesPage() {
                 </TableCell>
                 <TableCell>
                   {new Date(match.matchDate).toLocaleDateString("vi-VN")}
-                  <br />
-                  <Typography variant="caption" color="text.secondary">
-                    {match.kickoffTime}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  {match.venue.name}
-                  <br />
-                  <Typography variant="caption" color="text.secondary">
-                    {match.venue.city}
-                  </Typography>
                 </TableCell>
                 <TableCell>
                   <StatusChip status={match.status} label={statusLabels[match.status]} size="small" variant="filled" />
                 </TableCell>
                 <TableCell>
                   <StatusChip
-                    status={match.analysis?.isAnalyzed ? "success" : "pending"}
-                    label={match.analysis?.isAnalyzed ? "Đã phân tích" : "Chưa phân tích"}
+                    status={match.analysisInfo?.isAnalyzed ? "success" : "pending"}
+                    label={match.analysisInfo?.isAnalyzed ? "Đã phân tích" : "Chưa phân tích"}
                     size="small"
                     variant="filled"
                     withIcon={true}
@@ -532,15 +473,10 @@ export default function MatchesPage() {
                     <IconButton
                       onClick={() => {
                         setFormData({
-                          leagueId: match.leagueId,
+                          leagueId: match.leagueId._id,
                           homeTeamName: match.homeTeam.name,
                           awayTeamName: match.awayTeam.name,
-                          matchDate: new Date(match.matchDate),
-                          kickoffTime: match.kickoffTime,
-                          venueName: match.venue.name,
-                          venueCity: match.venue.city,
-                          round: match.round,
-                          status: match.status,
+                          matchDate: new Date(match.matchDate).toISOString()
                         });
                         setEditingId(match._id);
                         setOpenDialog(true);
@@ -570,16 +506,12 @@ export default function MatchesPage() {
                     </IconButton>
                   </Tooltip>
                   {/* Thêm nút phân tích */}
-                  {match.status === "scheduled" && (
+                  {match.status === "scheduled" && !match.analysisInfo?.isAnalyzed && (
                     <Tooltip title="Phân tích trận đấu">
                       <IconButton
                         size="small"
                         color="secondary"
                         onClick={() => handleOpenAnalyzeDialog(match)}
-                        disabled={
-                          match.analysis?.aiStatus === "processing" ||
-                          match.analysis?.aiStatus === "generated"
-                        }
                       >
                         <AnalyticsIcon />
                       </IconButton>
@@ -592,7 +524,7 @@ export default function MatchesPage() {
         </Table>
         <TablePagination
           component="div"
-          count={filteredMatches.length}
+          count={data.pagination.total}
           page={page}
           onPageChange={(e, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
@@ -659,65 +591,29 @@ export default function MatchesPage() {
             </Grid>
 
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={vi}>
-              <DateTimePicker
+              <DatePicker
                 label="Thời gian thi đấu"
-                value={formData.matchDate}
-                onChange={(newValue: Date | null) => newValue && setFormData({ ...formData, matchDate: newValue })}
+                value={typeof formData.matchDate === 'string' ? new Date(formData.matchDate) : formData.matchDate}
+                onChange={(newValue: Date | null) => 
+                  newValue && setFormData({ 
+                    ...formData, 
+                    matchDate: newValue.toISOString()
+                  })
+                }
               />
             </LocalizationProvider>
-
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Sân vận động"
-                  value={formData.venueName}
-                  onChange={(e) => setFormData({ ...formData, venueName: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Thành phố"
-                  value={formData.venueCity}
-                  onChange={(e) => setFormData({ ...formData, venueCity: e.target.value })}
-                />
-              </Grid>
-            </Grid>
-
-            <TextField
-              fullWidth
-              label="Vòng đấu"
-              value={formData.round}
-              onChange={(e) => setFormData({ ...formData, round: e.target.value })}
-            />
-
-            <FormControl fullWidth>
-              <InputLabel>Trạng thái</InputLabel>
-              <Select
-                value={formData.status}
-                label="Trạng thái"
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as Match["status"] })}
-              >
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>
-                    {label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Hủy</Button>
-          <Button variant="contained" onClick={handleSubmit}>
+          <Button variant="contained" onClick={handleSubmit} disabled={loading}>
             {editingId ? "Cập nhật" : "Thêm mới"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Analysis Dialog */}
-      <Dialog open={openAnalysisDialog} onClose={() => setOpenAnalysisDialog(false)} maxWidth="md" fullWidth>
+      <Dialog open={openAnalysis} onClose={() => setOpenAnalysis(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           Thông tin phân tích
           {selectedMatch && (
@@ -794,29 +690,29 @@ export default function MatchesPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAnalysisDialog(false)}>Đóng</Button>
+          <Button onClick={() => setOpenAnalysis(false)}>Đóng</Button>
         </DialogActions>
       </Dialog>
 
       {/* Confirm Dialog */}
       <ConfirmDialog
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
+        open={openConfirmDialog}
+        title="Xác nhận xóa"
+        message="Bạn có chắc chắn muốn xóa trận đấu này?"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
         severity="error"
       />
 
       {/* Dialog xác nhận phân tích */}
-      <Dialog open={analyzeDialog.open} onClose={handleCloseAnalyzeDialog}>
+      <Dialog open={openAnalyzeDialog} onClose={handleCloseAnalyzeDialog}>
         <DialogTitle>Xác nhận phân tích trận đấu</DialogTitle>
         <DialogContent>
           <Typography>
             Bạn có chắc chắn muốn phân tích trận đấu này?
           </Typography>
           <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
-            {analyzeDialog.matchName}
+            {analysisMatch && `${analysisMatch.homeTeam.name} vs ${analysisMatch.awayTeam.name}`}
           </Typography>
           <Typography variant="body2" sx={{ mt: 2 }}>
             Quá trình phân tích sẽ:
@@ -833,9 +729,9 @@ export default function MatchesPage() {
             onClick={handleAnalyze} 
             variant="contained" 
             color="primary"
-            disabled={analyzeLoading}
+            disabled={loading}
           >
-            {analyzeLoading ? "Đang xử lý..." : "Phân tích"}
+            {loading ? "Đang xử lý..." : "Phân tích"}
           </Button>
         </DialogActions>
       </Dialog>

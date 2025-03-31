@@ -63,7 +63,7 @@ export default function StatusChip({
 
   // Get color and icon based on status
   const getStatusConfig = (status: string) => {
-    const lowercasedStatus = status.toLowerCase();
+    const lowercasedStatus = status?.toLowerCase() || "";
 
     switch (lowercasedStatus) {
       case "completed":

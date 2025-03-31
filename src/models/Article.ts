@@ -20,7 +20,6 @@ const articleSchema = new mongoose.Schema({
       logo: { type: String }
     },
     matchDate: { type: Date, required: true },
-    kickoffTime: { type: String, required: true },
     leagueId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "League"

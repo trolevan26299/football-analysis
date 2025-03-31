@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Paper,
@@ -38,53 +37,49 @@ import {
   Cancel as InactiveIcon,
   Lock as LockIcon,
   LockOpen as UnlockIcon,
+  Key as KeyIcon,
 } from "@mui/icons-material";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
-interface User {
-  _id: string;
-  username: string;
-  fullName: string;
-  email: string;
-  role: "ktv";
-  status: "active" | "inactive";
-  isOnline: boolean;
-  lastLogin: string;
-  currentTasks: number;
-  totalTasksCompleted: number;
-  createdAt: string;
-}
+// Import RTK Query hooks
+import {
+  useGetUsersQuery,
+  useCreateUserMutation,
+  useUpdateUserMutation,
+  useDeleteUserMutation,
+  useResetPasswordMutation,
+} from "@/redux/services/rtk-query";
 
-interface FormData {
-  username: string;
-  password: string;
-  fullName: string;
-  email: string;
-  status: "active" | "inactive";
-}
+// Import Redux & Types
+import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
+import {
+  setSearchTerm,
+  updateFormData,
+  resetFormData,
+  setEditingUser,
+  clearSuccess,
+  clearError,
+} from "@/redux/slices/usersSlice";
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  // Redux state
+  const dispatch = useAppDispatch();
+  const {
+    formData,
+    editingId,
+    searchTerm,
+    error: stateError,
+    success: stateSuccess,
+  } = useAppSelector((state) => state.users);
+
+  // Local state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    username: "",
-    password: "",
-    fullName: "",
-    email: "",
-    status: "active",
-  });
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-  const [success, setSuccess] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     userId: string;
@@ -97,45 +92,28 @@ export default function UsersPage() {
     message: "",
   });
 
-  // Fetch users data
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/users");
-      const data = await response.json();
+  // RTK Query hooks
+  const { data: users = [], isLoading, error: queryError, refetch } = useGetUsersQuery();
+  const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
+  const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
+  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
+  const [resetPassword, { isLoading: isResetting }] = useResetPasswordMutation();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Không thể tải dữ liệu người dùng");
-      }
+  // Tính toán loading
+  const loading = isLoading || isCreating || isUpdating || isDeleting || isResetting;
 
-      setUsers(data);
-      setFilteredUsers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Kết hợp lỗi
+  const error = queryError ? 'Lỗi tải dữ liệu' : stateError;
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  // Filter users based on search term
-  useEffect(() => {
-    const filtered = users.filter(
-      (user) =>
-        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredUsers(filtered);
-    setPage(0);
-  }, [searchTerm, users]);
+  // Filtered users
+  const filteredUsers = users.filter((user) =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    dispatch(setSearchTerm(e.target.value));
   };
 
   // Handle pagination
@@ -150,35 +128,19 @@ export default function UsersPage() {
 
   // Handle dialog open/close
   const handleOpenDialog = () => {
-    setEditingId(null);
-    setFormData({
-      username: "",
-      password: "",
-      fullName: "",
-      email: "",
-      status: "active",
-    });
+    dispatch(resetFormData());
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    dispatch(resetFormData());
   };
 
   // Handle edit
   const handleEdit = (id: string) => {
-    const user = users.find((u) => u._id === id);
-    if (user) {
-      setFormData({
-        username: user.username,
-        password: "",
-        fullName: user.fullName,
-        email: user.email,
-        status: user.status,
-      });
-      setEditingId(id);
-      setOpenDialog(true);
-    }
+    dispatch(setEditingUser(id));
+    setOpenDialog(true);
   };
 
   // Handle delete
@@ -193,25 +155,10 @@ export default function UsersPage() {
 
   const handleConfirmDelete = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`/api/users/${confirmDialog.userId}`, {
-        method: "DELETE",
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể xóa người dùng");
-      }
-
-      // Hiển thị thông báo thành công
-      setSuccess("Xóa người dùng thành công");
-
-      await fetchUsers();
+      await deleteUser(confirmDialog.userId).unwrap();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      console.error("Failed to delete user:", err);
     } finally {
-      setLoading(false);
       setConfirmDialog({ ...confirmDialog, open: false });
     }
   };
@@ -223,38 +170,19 @@ export default function UsersPage() {
   // Handle toggle status
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     try {
-      setLoading(true);
       const newStatus = currentStatus === "active" ? "inactive" : "active";
-      const response = await fetch(`/api/users/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể cập nhật trạng thái");
-      }
-
-      // Cập nhật state
-      setUsers(users.map((user) => (user._id === id ? { ...user, status: newStatus as "active" | "inactive" } : user)));
-
-      setSuccess(`Đã ${newStatus === "active" ? "kích hoạt" : "vô hiệu hóa"} tài khoản`);
+      await updateUser({
+        id,
+        body: { status: newStatus },
+      }).unwrap();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      console.error("Failed to update status:", err);
     }
   };
 
   // Handle reset password
   const handleResetPasswordClick = (id: string) => {
-    setEditingId(id);
+    dispatch(setEditingUser(id));
     setNewPassword("");
     setResetPasswordDialog(true);
   };
@@ -263,85 +191,63 @@ export default function UsersPage() {
     if (!editingId || !newPassword) return;
 
     try {
-      setLoading(true);
-      const response = await fetch(`/api/users/${editingId}/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể đặt lại mật khẩu");
-      }
-
-      setSuccess("Đặt lại mật khẩu thành công");
+      await resetPassword({ id: editingId, password: newPassword }).unwrap();
       setResetPasswordDialog(false);
       setNewPassword("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      console.error("Failed to reset password:", err);
     }
   };
 
   // Handle submit form
   const handleSubmit = async () => {
-    // Validate form
-    if (!formData.username || !formData.fullName || !formData.email) {
-      setError("Vui lòng điền đầy đủ thông tin.");
+    // Validate form - Chỉ yêu cầu username và fullName
+    if (!formData.username || !formData.fullName) {
       return;
     }
 
     if (!editingId && !formData.password) {
-      setError("Vui lòng nhập mật khẩu.");
       return;
     }
 
     try {
-      setLoading(true);
-      const url = editingId ? `/api/users/${editingId}` : "/api/users";
-      const method = editingId ? "PUT" : "POST";
-
-      // Tạo payload mới thay vì chỉnh sửa formData trực tiếp
-      const payload: Record<string, any> = {
-        username: formData.username,
-        fullName: formData.fullName,
-        email: formData.email,
-        status: formData.status,
-        role: "ktv",
-      };
-
-      // Chỉ thêm password vào payload nếu có giá trị
-      if (formData.password) {
-        payload.password = formData.password;
+      if (editingId) {
+        await updateUser({
+          id: editingId,
+          body: {
+            fullName: formData.fullName,
+            status: formData.status,
+            role: formData.role,
+            ...(formData.password ? { password: formData.password } : {}),
+          },
+        }).unwrap();
+      } else {
+        await createUser({
+          username: formData.username,
+          password: formData.password || '',
+          fullName: formData.fullName,
+          status: formData.status,
+          role: formData.role || 'ktv',
+        }).unwrap();
       }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể lưu thông tin");
-      }
-
-      setSuccess(editingId ? "Cập nhật thành công" : "Thêm mới thành công");
       setOpenDialog(false);
-      fetchUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      console.error("Failed to save user:", err);
     }
+  };
+
+  // Handle form change
+  const handleFormChange = (field: string, value: string | boolean) => {
+    dispatch(updateFormData({ [field]: value }));
+  };
+
+  // Clear notifications
+  const handleClearSuccess = () => {
+    dispatch(clearSuccess());
+  };
+
+  const handleClearError = () => {
+    dispatch(clearError());
   };
 
   if (loading && users.length === 0) {
@@ -350,9 +256,9 @@ export default function UsersPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {error && <ErrorAlert message={error} severity="error" onClose={() => setError(null)} variant="toast" />}
+      {error && <ErrorAlert message={error} severity="error" onClose={handleClearError} variant="toast" />}
 
-      {success && <ErrorAlert message={success} severity="success" onClose={() => setSuccess(null)} variant="toast" />}
+      {stateSuccess && <ErrorAlert message={stateSuccess} severity="success" onClose={handleClearSuccess} variant="toast" />}
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h5">Quản lý KTV</Typography>
@@ -360,7 +266,7 @@ export default function UsersPage() {
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog} sx={{ mr: 1 }}>
             Thêm KTV
           </Button>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchUsers}>
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()}>
             Làm mới
           </Button>
         </Box>
@@ -387,7 +293,7 @@ export default function UsersPage() {
             <TableRow>
               <TableCell>Thông tin KTV</TableCell>
               <TableCell>Trạng thái</TableCell>
-              <TableCell>Công việc</TableCell>
+              <TableCell>Số công việc đã hoàn thành</TableCell>
               <TableCell>Đăng nhập cuối</TableCell>
               <TableCell align="right">Thao tác</TableCell>
             </TableRow>
@@ -401,15 +307,12 @@ export default function UsersPage() {
                       overlap="circular"
                       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                       variant="dot"
-                      color={user.isOnline ? "success" : "default"}
+                      color={user.status === "active" ? "success" : "default"}
                     >
                       <Avatar>{user.username[0].toUpperCase()}</Avatar>
                     </Badge>
                     <Box>
                       <Typography variant="subtitle2">{user.fullName}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {user.email}
-                      </Typography>
                       <Typography variant="caption" color="text.secondary">
                         @{user.username}
                       </Typography>
@@ -425,8 +328,9 @@ export default function UsersPage() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">Đang xử lý: {user.currentTasks}</Typography>
-                  <Typography variant="body2">Đã hoàn thành: {user.totalTasksCompleted}</Typography>
+                  <Typography variant="body2">
+                    {user.totalTasksCompleted || 0}
+                  </Typography>
                 </TableCell>
                 <TableCell>
                   {user.lastLogin ? new Date(user.lastLogin).toLocaleString("vi-VN") : "Chưa đăng nhập"}
@@ -447,7 +351,7 @@ export default function UsersPage() {
                         handleResetPasswordClick(user._id);
                       }}
                     >
-                      <LockIcon />
+                      <KeyIcon />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={user.status === "active" ? "Vô hiệu hóa" : "Kích hoạt"}>
@@ -488,68 +392,52 @@ export default function UsersPage() {
         <DialogContent>
           <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
-              label="Tên đăng nhập"
+              label="Tên đăng nhập *"
               fullWidth
               value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              onChange={(e) => handleFormChange('username', e.target.value)}
               disabled={!!editingId}
+              required
             />
             {!editingId && (
               <TextField
-                label="Mật khẩu"
+                label="Mật khẩu *"
                 type="password"
                 fullWidth
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) => handleFormChange('password', e.target.value)}
+                required
               />
             )}
             <TextField
-              label="Họ tên"
+              label="Họ tên *"
               fullWidth
               value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-            />
-            <TextField
-              label="Email"
-              type="email"
-              fullWidth
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) => handleFormChange('fullName', e.target.value)}
+              required
             />
             <FormControlLabel
               control={
                 <Switch
                   checked={formData.status === "active"}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.checked ? "active" : "inactive",
-                    })
-                  }
+                  onChange={(e) => handleFormChange('status', e.target.checked ? "active" : "inactive")}
+                  color="primary"
                 />
               }
-              label="Tài khoản hoạt động"
+              label="Hoạt động"
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Hủy</Button>
-          <Button variant="contained" onClick={handleSubmit}>
+          <Button variant="contained" onClick={handleSubmit} disabled={loading}>
             {editingId ? "Cập nhật" : "Thêm mới"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Reset Password Dialog */}
-      <Dialog
-        open={resetPasswordDialog}
-        onClose={() => {
-          setResetPasswordDialog(false);
-          setNewPassword("");
-        }}
-        maxWidth="xs"
-        fullWidth
-      >
+      <Dialog open={resetPasswordDialog} onClose={() => setResetPasswordDialog(false)}>
         <DialogTitle>Đặt lại mật khẩu</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
@@ -563,16 +451,9 @@ export default function UsersPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setResetPasswordDialog(false);
-              setNewPassword("");
-            }}
-          >
-            Hủy
-          </Button>
-          <Button variant="contained" onClick={handleResetPassword} disabled={!newPassword}>
-            Xác nhận
+          <Button onClick={() => setResetPasswordDialog(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleResetPassword} disabled={!newPassword || loading}>
+            Đặt lại mật khẩu
           </Button>
         </DialogActions>
       </Dialog>
@@ -584,7 +465,6 @@ export default function UsersPage() {
         message={confirmDialog.message}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
-        severity="error"
       />
     </Box>
   );

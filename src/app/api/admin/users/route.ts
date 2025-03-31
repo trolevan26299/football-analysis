@@ -4,10 +4,10 @@ import { User } from "@/models/User";
 import { MiddlewareService } from "@/lib/middleware";
 import bcrypt from "bcryptjs";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     // Xác thực người dùng admin
-    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    const authError = await MiddlewareService.verifyUserRole(["admin"], req);
     if (authError) return authError;
 
     // Kết nối database
@@ -31,7 +31,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     // Xác thực người dùng admin
-    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    const authError = await MiddlewareService.verifyUserRole(["admin"], request);
     if (authError) return authError;
 
     // Kết nối database
@@ -39,6 +39,14 @@ export async function POST(request: Request) {
 
     // Lấy dữ liệu từ request
     const data = await request.json();
+    
+    // Kiểm tra yêu cầu tối thiểu: username, password và fullName
+    if (!data.username || !data.password || !data.fullName) {
+      return NextResponse.json(
+        { error: "Thiếu thông tin bắt buộc (username, password, fullName)" },
+        { status: 400 }
+      );
+    }
     
     // Kiểm tra username đã tồn tại chưa
     const existingUser = await User.findOne({ username: data.username });
@@ -56,7 +64,9 @@ export async function POST(request: Request) {
     const newUser = new User({
       username: data.username,
       password: hashedPassword,
+      fullName: data.fullName,
       role: data.role || "ktv", // Mặc định là ktv nếu không chỉ định
+      status: data.status || "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     });

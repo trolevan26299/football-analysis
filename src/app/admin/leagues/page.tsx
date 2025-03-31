@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -37,22 +37,16 @@ import {
 } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
 
-interface League {
-  _id: string;
-  name: string;
-  country: string;
-  season: string;
-  status: "active" | "inactive";
-  createdAt: string;
-  updatedAt: string;
-}
+// Import RTK Query hooks
+import {
+  useGetLeaguesQuery,
+  useCreateLeagueMutation,
+  useUpdateLeagueMutation,
+  useDeleteLeagueMutation,
+} from "@/redux/services/rtk-query";
 
-interface LeagueFormData {
-  name: string;
-  country: string;
-  season: string;
-  status: "active" | "inactive";
-}
+// Import types
+import { League, LeagueFormData } from "@/types";
 
 const initialFormData: LeagueFormData = {
   name: "",
@@ -63,17 +57,13 @@ const initialFormData: LeagueFormData = {
 
 export default function LeaguesPage() {
   const theme = useTheme();
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showInactiveLeagues, setShowInactiveLeagues] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDialog, setOpenDialog] = useState(false);
   const [formData, setFormData] = useState<LeagueFormData>(initialFormData);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showInactiveLeagues, setShowInactiveLeagues] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     leagueId: string;
@@ -86,59 +76,46 @@ export default function LeaguesPage() {
     message: "",
   });
 
-  // Fetch leagues data
-  const fetchLeagues = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/leagues");
-      if (!response.ok) throw new Error("Không thể tải dữ liệu giải đấu");
-      const data = await response.json();
-      setLeagues(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLeagues();
-  }, []);
+  // RTK Query hooks
+  const { data: leagues = [], isLoading, error: queryError, refetch } = useGetLeaguesQuery({ 
+    status: showInactiveLeagues ? undefined : 'active' 
+  });
+  const [createLeague, { isLoading: isCreating, error: createError }] = useCreateLeagueMutation();
+  const [updateLeague, { isLoading: isUpdating, error: updateError }] = useUpdateLeagueMutation();
+  const [deleteLeague, { isLoading: isDeleting, error: deleteError }] = useDeleteLeagueMutation();
+  
+  // Tính toán loading
+  const loading = isLoading || isCreating || isUpdating || isDeleting;
+  
+  // Kết hợp lỗi
+  const error = queryError || createError || updateError || deleteError 
+    ? 'Đã xảy ra lỗi khi làm việc với dữ liệu giải đấu' 
+    : null;
+  
+  // Thông báo thành công
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Handle form submission
   const handleSubmit = async () => {
     // Kiểm tra dữ liệu đầu vào
     if (!formData.name || !formData.country || !formData.season) {
-      setError("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 
     try {
-      setLoading(true);
-      const url = editingId ? `/api/leagues/${editingId}` : "/api/leagues";
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Không thể lưu giải đấu");
+      if (editingId) {
+        await updateLeague({
+          id: editingId,
+          body: formData,
+        }).unwrap();
+        setSuccess("Cập nhật giải đấu thành công");
+      } else {
+        await createLeague(formData).unwrap();
+        setSuccess("Thêm giải đấu mới thành công");
       }
-
-      // Hiển thị thông báo thành công
-      setSuccess(editingId ? "Cập nhật giải đấu thành công" : "Thêm giải đấu mới thành công");
-
-      await fetchLeagues();
       handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      console.error("Failed to save league:", err);
     }
   };
 
@@ -154,23 +131,11 @@ export default function LeaguesPage() {
 
   const handleConfirmDelete = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`/api/leagues/${confirmDialog.leagueId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Không thể xóa giải đấu");
-      }
-
-      // Cập nhật dữ liệu
-      setLeagues(leagues.filter((league) => league._id !== confirmDialog.leagueId));
+      await deleteLeague(confirmDialog.leagueId).unwrap();
       setSuccess("Xóa giải đấu thành công");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
+      console.error("Failed to delete league:", err);
     } finally {
-      setLoading(false);
       // Đóng dialog xác nhận
       setConfirmDialog({ ...confirmDialog, open: false });
     }
@@ -207,10 +172,9 @@ export default function LeaguesPage() {
     setEditingId(null);
   };
 
-  // Filter and pagination handlers
+  // Filter leagues
   const filteredLeagues = leagues.filter(
     (league) =>
-      (showInactiveLeagues || league.status === "active") &&
       (league.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         league.country.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -224,7 +188,7 @@ export default function LeaguesPage() {
     setPage(0);
   };
 
-  if (loading) {
+  if (loading && leagues.length === 0) {
     return <LoadingSpinner 
       variant="overlay" 
       message="Đang tải dữ liệu..." 
@@ -234,7 +198,7 @@ export default function LeaguesPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {error && <ErrorAlert message={error} severity="error" variant="toast" onClose={() => setError(null)} />}
+      {error && <ErrorAlert message={error} severity="error" variant="toast" onClose={() => null} />}
       {success && <ErrorAlert message={success} severity="success" variant="toast" onClose={() => setSuccess(null)} />}
 
       {/* Header */}
@@ -313,7 +277,7 @@ export default function LeaguesPage() {
           />
           <Button
             startIcon={<RefreshIcon />}
-            onClick={fetchLeagues}
+            onClick={() => refetch()}
             variant="outlined"
             sx={{
               borderRadius: "10px",
@@ -506,7 +470,7 @@ export default function LeaguesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Hủy</Button>
-          <Button variant="contained" onClick={handleSubmit}>
+          <Button variant="contained" onClick={handleSubmit} disabled={loading}>
             {editingId ? "Cập nhật" : "Thêm mới"}
           </Button>
         </DialogActions>

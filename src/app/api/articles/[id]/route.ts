@@ -28,7 +28,7 @@ export async function GET(
 
     // Tìm bài phân tích
     const article = await Article.findById(id)
-      .populate("matchId", "status round venue")
+      .populate("matchId", "status venue")
       .select({
         "matchInfo": 1,
         "aiAnalysis": 1,

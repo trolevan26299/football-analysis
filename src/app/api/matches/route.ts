@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerAuthSession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Match } from "@/models/Match";
+import { MiddlewareService } from "@/lib/middleware";
 
 // Define Match type (không export)
 
@@ -18,7 +19,10 @@ export async function GET() {
     await connectDB();
 
     // Lấy danh sách trận đấu từ cơ sở dữ liệu
-    const matches = await Match.find().sort({ matchDate: -1 }).lean();
+    const matches = await Match.find()
+      .sort({ matchDate: -1 })
+      .populate("leagueId", "name country season")
+      .lean();
 
     return NextResponse.json(matches);
   } catch (error) {
@@ -27,58 +31,128 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  const session = await getServerAuthSession();
-
-  if (!session || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST(req: Request) {
   try {
-    const data = await request.json();
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
 
-    // Kết nối đến MongoDB
+    // Kết nối database
     await connectDB();
 
-    // Xác thực dữ liệu đầu vào
-    if (!data.leagueId || !data.homeTeamName || !data.awayTeamName || !data.matchDate) {
-      return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
+    // Lấy dữ liệu từ request
+    const session = await getServerAuthSession();
+    const data = await req.json();
+    
+    // Lấy các trường từ data
+    const { leagueId, homeTeamName, awayTeamName, matchDate } = data;
+    
+    console.log("Received match data:", { leagueId, homeTeamName, awayTeamName, matchDate });
+
+    // Kiểm tra các trường bắt buộc
+    if (!leagueId || !homeTeamName || !awayTeamName || !matchDate) {
+      return NextResponse.json(
+        { error: "Thiếu thông tin bắt buộc" },
+        { status: 400 }
+      );
     }
 
-    // Định dạng dữ liệu
+    // Chuyển đổi matchDate thành định dạng ISO Date nếu chưa phải
+    let formattedMatchDate;
+    try {
+      formattedMatchDate = new Date(matchDate);
+      if (isNaN(formattedMatchDate.getTime())) {
+        throw new Error("Ngày không hợp lệ");
+      }
+    } catch (err) {
+      console.error("Invalid date format:", err);
+      return NextResponse.json(
+        { error: "Định dạng ngày không hợp lệ" },
+        { status: 400 }
+      );
+    }
+
+    // Chuẩn bị dữ liệu trận đấu
     const matchData = {
-      leagueId: data.leagueId,
+      leagueId,
       homeTeam: {
-        name: data.homeTeamName,
-        logo: data.homeTeamLogo || `/logos/${data.homeTeamName.toLowerCase().replace(/\s+/g, "")}.png`, // Tạo đường dẫn logo mặc định
+        name: homeTeamName,
+        logo: "",
         score: 0,
       },
       awayTeam: {
-        name: data.awayTeamName,
-        logo: data.awayTeamLogo || `/logos/${data.awayTeamName.toLowerCase().replace(/\s+/g, "")}.png`, // Tạo đường dẫn logo mặc định
+        name: awayTeamName,
+        logo: "",
         score: 0,
       },
-      matchDate: new Date(data.matchDate),
-      kickoffTime: data.kickoffTime || "00:00",
-      venue: {
-        name: data.venueName || "",
-        city: data.venueCity || "",
+      matchDate: formattedMatchDate,
+      status: "scheduled",
+      analysisInfo: {
+        isAnalyzed: false,
+        analysisStatus: "not_analyzed"
       },
-      status: data.status || "scheduled",
-      round: data.round || "",
-      createdBy: session.user.id,
+      createdBy: session?.user?.id,
     };
 
     // Tạo trận đấu mới
-    const newMatch = new Match(matchData);
-    await newMatch.save();
+    const newMatch = await Match.create(matchData);
+    console.log("Created new match:", newMatch);
 
-    return NextResponse.json({
-      message: "Trận đấu đã được tạo thành công",
-      match: newMatch,
-    });
+    return NextResponse.json(
+      { message: "Tạo trận đấu thành công", match: newMatch },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating match:", error);
-    return NextResponse.json({ error: "Lỗi khi tạo trận đấu mới" }, { status: 500 });
+    return MiddlewareService.handleError(error, "Lỗi khi tạo trận đấu");
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    // Xác thực người dùng admin
+    const authError = await MiddlewareService.verifyUserRole(["admin"]);
+    if (authError) return authError;
+
+    // Kết nối database
+    await connectDB();
+
+    // Lấy dữ liệu từ request
+    const session = await getServerAuthSession();
+    const { id, leagueId, homeTeamName, awayTeamName, matchDate } = await req.json();
+
+    // Kiểm tra ID
+    if (!id) {
+      return NextResponse.json(
+        { error: "ID trận đấu không hợp lệ" },
+        { status: 400 }
+      );
+    }
+
+    // Tìm trận đấu cần cập nhật
+    const existingMatch = await Match.findById(id);
+    if (!existingMatch) {
+      return NextResponse.json(
+        { error: "Không tìm thấy trận đấu" },
+        { status: 404 }
+      );
+    }
+
+    // Cập nhật thông tin
+    if (leagueId) existingMatch.leagueId = leagueId;
+    if (homeTeamName) existingMatch.homeTeam.name = homeTeamName;
+    if (awayTeamName) existingMatch.awayTeam.name = awayTeamName;
+    if (matchDate) existingMatch.matchDate = matchDate;
+    
+    existingMatch.updatedBy = session?.user?.id;
+
+    // Lưu thay đổi
+    await existingMatch.save();
+
+    return NextResponse.json(
+      { message: "Cập nhật trận đấu thành công", match: existingMatch }
+    );
+  } catch (error) {
+    return MiddlewareService.handleError(error, "Lỗi khi cập nhật trận đấu");
   }
 }
