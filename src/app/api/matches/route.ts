@@ -47,8 +47,6 @@ export async function POST(req: Request) {
     // Lấy các trường từ data
     const { leagueId, homeTeamName, awayTeamName, matchDate } = data;
     
-    console.log("Received match data:", { leagueId, homeTeamName, awayTeamName, matchDate });
-
     // Kiểm tra các trường bắt buộc
     if (!leagueId || !homeTeamName || !awayTeamName || !matchDate) {
       return NextResponse.json(
@@ -96,7 +94,6 @@ export async function POST(req: Request) {
 
     // Tạo trận đấu mới
     const newMatch = await Match.create(matchData);
-    console.log("Created new match:", newMatch);
 
     return NextResponse.json(
       { message: "Tạo trận đấu thành công", match: newMatch },

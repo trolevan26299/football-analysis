@@ -30,9 +30,7 @@ export async function GET(request: Request) {
     }
 
     // Lấy danh sách giải đấu từ cơ sở dữ liệu với query
-    console.log("Fetching leagues from database with query:", query);
     const leagues = await League.find(query).sort({ createdAt: -1 }).lean();
-    console.log("Leagues fetched:", leagues.length);
 
     return NextResponse.json(leagues);
   } catch (error) {

@@ -83,7 +83,6 @@ matchSchema.pre("save", function(next) {
   // Nếu ngày thi đấu ở quá khứ (nhỏ hơn ngày hiện tại) và trạng thái vẫn là "scheduled", 
   // thì tự động cập nhật thành "finished"
   if (matchDateOnly < currentDateOnly && this.status === "scheduled") {
-    console.log(`Automatically changing match status to "finished" as date ${matchDateOnly} is in the past compared to ${currentDateOnly}`);
     this.status = "finished";
   }
   
@@ -91,7 +90,6 @@ matchSchema.pre("save", function(next) {
   // thì cần đổi lại thành scheduled (nhưng chỉ khi không có sự thay đổi trực tiếp trong request)
   // Trường hợp này xảy ra khi admin cập nhật ngày của trận đấu đã diễn ra thành ngày trong tương lai
   if (matchDateOnly >= currentDateOnly && this.status === "finished" && !this.isModified('status')) {
-    console.log(`Changing match status back to "scheduled" as date ${matchDateOnly} is now in the future/today`);
     this.status = "scheduled";
   }
   

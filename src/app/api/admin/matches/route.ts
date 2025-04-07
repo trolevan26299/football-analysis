@@ -21,8 +21,6 @@ export async function GET(req: Request) {
     const leagueId = url.searchParams.get("leagueId") || "";
     const status = url.searchParams.get("status") || "";
 
-    console.log("Query params:", { page, limit, search, leagueId, status });
-
     // Tạo query filter
     const filter: any = {};
 

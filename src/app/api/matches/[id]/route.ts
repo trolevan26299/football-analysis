@@ -71,9 +71,7 @@ export async function PUT(
     await connectDB();
 
     // Lấy dữ liệu từ request body
-    const data = await req.json();
-    console.log("Update request for match ID:", id, "Data:", data);
-    
+    const data = await req.json();    
     const { leagueId, homeTeamName, awayTeamName, matchDate, status } = data;
 
     // Kiểm tra các trường bắt buộc
@@ -117,12 +115,10 @@ export async function PUT(
     // Cập nhật trạng thái nếu có
     if (status && ["scheduled", "finished"].includes(status)) {
       existingMatch.status = status;
-      console.log("Updated match status to:", status);
     }
     
     // Lưu thay đổi
     await existingMatch.save();
-    console.log("Match updated successfully:", existingMatch);
 
     return NextResponse.json(
       { message: "Cập nhật trận đấu thành công", match: existingMatch },
