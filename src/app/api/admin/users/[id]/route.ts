@@ -79,7 +79,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       
       updateData.username = data.username;
     }
-    
+
+    if (data.fullName !== undefined) {
+      updateData.fullName = data.fullName;
+    }
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
+
     if (data.role !== undefined) {
       updateData.role = data.role;
     }

@@ -9,8 +9,8 @@ export default async function Home() {
   }
 
   if (session.user.role === "admin") {
-    redirect("/admin");
+    redirect("/dashboard/admin");
   } else {
-    redirect("/ktv");
+    redirect("/dashboard/matches");
   }
 }

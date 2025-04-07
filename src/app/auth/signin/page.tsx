@@ -41,7 +41,7 @@ export default function SignInPage() {
         setError("Email hoặc mật khẩu không chính xác");
         setLoading(false);
       } else {
-        router.push("/admin");
+          router.push("/dashboard/matches")      
       }
     } catch (_) {
       setError("Có lỗi xảy ra. Vui lòng thử lại sau.");

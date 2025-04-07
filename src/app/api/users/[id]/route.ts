@@ -54,28 +54,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     const data = await request.json();
 
-    // Kiểm tra dữ liệu đầu vào
-    if (!data.fullName || !data.email) {
+    // Kiểm tra dữ liệu đầu vào - chỉ yêu cầu fullName
+    if (!data.fullName) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
     }
 
     // Kết nối đến MongoDB
     await connectDB();
 
-    // Kiểm tra xem email đã tồn tại chưa (trừ người dùng hiện tại)
-    const existingEmail = await User.findOne({
-      email: data.email,
-      _id: { $ne: id },
-    });
-
-    if (existingEmail) {
-      return NextResponse.json({ error: "Email đã tồn tại" }, { status: 400 });
-    }
-
     // Chuẩn bị dữ liệu cập nhật
     const updateData: any = {
       fullName: data.fullName,
-      email: data.email,
       status: data.status,
       updatedBy: session.user.id,
       updatedAt: new Date(),

@@ -49,7 +49,6 @@ export type DeepPartial<T> = T extends object ? { [P in keyof T]?: DeepPartial<T
 export interface User {
   _id: string;
   username: string;
-  email: string;
   fullName: string;
   role: 'admin' | 'ktv';
   status: 'active' | 'inactive';
@@ -67,7 +66,6 @@ export interface UserFormData {
   username: string;
   password?: string;
   fullName: string;
-  email: string;
   role?: 'admin' | 'ktv';
   status: 'active' | 'inactive';
 }

@@ -35,8 +35,6 @@ import {
   Search as SearchIcon,
   CheckCircle as ActiveIcon,
   Cancel as InactiveIcon,
-  Lock as LockIcon,
-  LockOpen as UnlockIcon,
   Key as KeyIcon,
 } from "@mui/icons-material";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -167,19 +165,6 @@ export default function UsersPage() {
     setConfirmDialog({ ...confirmDialog, open: false });
   };
 
-  // Handle toggle status
-  const handleToggleStatus = async (id: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === "active" ? "inactive" : "active";
-      await updateUser({
-        id,
-        body: { status: newStatus },
-      }).unwrap();
-    } catch (err) {
-      console.error("Failed to update status:", err);
-    }
-  };
-
   // Handle reset password
   const handleResetPasswordClick = (id: string) => {
     dispatch(setEditingUser(id));
@@ -276,7 +261,7 @@ export default function UsersPage() {
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
-            placeholder="Tìm kiếm theo tên, email, tài khoản..."
+            placeholder="Tìm kiếm theo tên, tài khoản..."
             value={searchTerm}
             onChange={handleSearch}
             InputProps={{
@@ -352,14 +337,6 @@ export default function UsersPage() {
                       }}
                     >
                       <KeyIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={user.status === "active" ? "Vô hiệu hóa" : "Kích hoạt"}>
-                    <IconButton
-                      color={user.status === "active" ? "error" : "success"}
-                      onClick={() => handleToggleStatus(user._id, user.status)}
-                    >
-                      {user.status === "active" ? <LockIcon /> : <UnlockIcon />}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Xóa">

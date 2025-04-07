@@ -168,14 +168,7 @@ export default function MatchesPage() {
       // Sử dụng UTC để tránh vấn đề múi giờ
       const matchDateOnly = new Date(Date.UTC(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate()));
       const currentDateOnly = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
-      
-      console.log('DEBUG - Dates:', {
-        matchDate,
-        currentDate,
-        matchDateOnly,
-        currentDateOnly,
-        comparison: matchDateOnly > currentDateOnly ? 'Match is in future' : 'Match is past or today'
-      });
+    
       
       // Xác định trạng thái dựa trên ngày thi đấu
       // Nếu ngày trận đấu >= ngày hiện tại thì là "scheduled" (chưa diễn ra)
@@ -290,12 +283,6 @@ export default function MatchesPage() {
 
   // Tự động refetch khi filter thay đổi
   useEffect(() => {
-    console.log('Filter changed, refetching data:', { 
-      search: debouncedSearchTerm, 
-      leagueId: filterLeague, 
-      status: filterStatus 
-    });
-    
     refetch();
     // Reset về trang đầu tiên khi thay đổi filter
     setPage(0);

@@ -25,7 +25,6 @@ const initialState = usersAdapter.getInitialState<UsersState>({
     username: '',
     password: '',
     fullName: '',
-    email: '',
     role: 'ktv',
     status: 'active',
   },
@@ -60,7 +59,6 @@ const usersSlice = createSlice({
           username: user.username,
           password: '', // Không hiển thị mật khẩu
           fullName: user.fullName,
-          email: user.email,
           role: user.role,
           status: user.status,
         };
@@ -173,8 +171,7 @@ export const selectFilteredUsers = (state: RootState) => {
   return users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
     return user.username.toLowerCase().includes(searchLower) ||
-           user.fullName.toLowerCase().includes(searchLower) ||
-           user.email.toLowerCase().includes(searchLower);
+           user.fullName.toLowerCase().includes(searchLower);
   });
 };
 

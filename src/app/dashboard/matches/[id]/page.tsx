@@ -6,7 +6,7 @@ import { useGetMatchByIdQuery } from '@/redux/services/rtk-query';
 import StatusChip from '@/components/ui/StatusChip';
 import ErrorAlert from '@/components/ui/ErrorAlert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import AdminLayout from '@/components/layouts/AdminLayout';
+import AdminLayout from '@/components/layouts/Layout';
 import PageTitle from '@/components/ui/PageTitle';
 
 interface MatchDetailPageProps {
