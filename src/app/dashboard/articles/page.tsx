@@ -214,7 +214,7 @@ export default function ArticlesPage() {
   
   // Hàm chuyển sang trang chi tiết
   const handleArticleClick = (id: string) => {
-    router.push(`/articles/${id}`);
+    router.push(`/dashboard/articles/${id}`);
   };
 
   // Format date

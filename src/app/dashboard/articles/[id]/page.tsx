@@ -167,7 +167,7 @@ export default function ArticleDetailPage({ params }: { params: { id: string } }
         <Box sx={{ py: 4 }}>
           <Button 
             startIcon={<ArrowBackIcon />} 
-            onClick={() => router.push('/articles')}
+            onClick={() => router.push('/dashboard/articles')}
             sx={{ mb: 2 }}
           >
             Quay lại danh sách
@@ -187,7 +187,7 @@ export default function ArticleDetailPage({ params }: { params: { id: string } }
           </Typography>
           <Button 
             startIcon={<ArrowBackIcon />} 
-            onClick={() => router.push('/articles')}
+            onClick={() => router.push('/dashboard/articles')}
             variant="contained"
           >
             Quay lại danh sách
@@ -202,7 +202,7 @@ export default function ArticleDetailPage({ params }: { params: { id: string } }
       <Box sx={{ py: 4 }}>
         <Button 
           startIcon={<ArrowBackIcon />} 
-          onClick={() => router.push('/articles')}
+          onClick={() => router.push('/dashboard/articles')}
           sx={{ mb: 2 }}
         >
           Quay lại danh sách
