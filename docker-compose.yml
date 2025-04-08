@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Ứng dụng Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: football-analysis-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/football_analysis}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your_nextauth_secret}
+      - API_KEY=${API_KEY:-your_api_key}
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - mongodb
+    networks:
+      - football-network
+
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: football-analysis-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-football_analysis}
+    networks:
+      - football-network
+
+  # n8n
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: football-analysis-n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_ADMIN_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_ADMIN_PASSWORD:-password}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - WEBHOOK_URL=http://localhost:5678
+      - DB_TYPE=mongodb
+      - DB_MONGODB_CONNECTION_URL=${MONGODB_URI:-mongodb://mongodb:27017/football_analysis}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - mongodb
+    networks:
+      - football-network
+
+networks:
+  football-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  n8n_data: 

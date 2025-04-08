@@ -53,3 +53,12 @@ export async function connectDB() {
 
   return cached.conn;
 }
+
+export function disconnectDB() {
+  if (cached.conn) {
+    cached.conn.disconnect();
+    cached.conn = null;
+    cached.promise = null;
+    console.log(`MongoDB disconnected from ${config.db.dbName}`);
+  }
+}

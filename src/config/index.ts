@@ -6,6 +6,10 @@ export const dbConfig = {
   dbName: 'football_analysis'
 };
 
+export const apiConfig = {
+  apiKey: process.env.API_KEY || 'your-secure-api-key-change-me'
+};
+
 
 // Cấu hình ứng dụng
 export const appConfig = {
@@ -17,6 +21,7 @@ export const appConfig = {
 };
 
 export default {
+  api: apiConfig,
   db: dbConfig,
   app: appConfig
 }; 
